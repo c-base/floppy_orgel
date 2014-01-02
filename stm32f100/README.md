@@ -1,0 +1,1 @@
+TODO: add serial firmware and sdcard firmware
