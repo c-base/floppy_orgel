@@ -1,0 +1,63 @@
+[Channel1]
+enabled = false
+serialport = /dev/ttyUSB0
+
+[Channel2]
+enabled = false
+serialport = /dev/ttyUSB1
+
+[Channel3]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel4]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel5]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel6]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel7]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel8]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel9]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel10]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel11]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel12]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel13]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel14]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel15]
+enabled = true
+serialport = /dev/ttyUSB2
+
+[Channel16]
+enabled = true
+serialport = /dev/ttyUSB2
