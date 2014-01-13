@@ -92,13 +92,6 @@ class Graph:
             y_text = self.font.render(str(100 - (i * (self.y_max / self.y_divisors))), 0, pygame.Color("green"))
             surface.blit(y_text, (self.x_pos - 12 - y_text.get_width(), self.y_pos + i * y_div_pixels - y_text.get_height() / 2))
 
-        # Current frequency
-        freq_text = self.font.render("Frequency: %d Hz (--)" % self.cur_frequency, 0, pygame.Color("red"))
-        surface.blit(freq_text, (self.x_pos, self.y_pos - 75))
-
-        # Current volume
-        freq_text = self.font.render("Volume: %d%%" % self.cur_volume, 0, pygame.Color("red"))
-        surface.blit(freq_text, (self.x_pos + self.x_size - freq_text.get_width(), self.y_pos - 75))
 
     def _frequency_to_note(self, frequency):
         return math.log(math.pow(frequency, 12.0) / math.pow(self.frequency_table[0], 12.0), 2.0)
@@ -139,6 +132,19 @@ class Graph:
 
 
 def main():
+
+    def get_note_name_from_frequency(frequency):
+        def _frequency_to_note(freq):
+            return round(math.log(math.pow(freq, 12.0) / math.pow(2 * 8.17575, 12.0), 2.0))
+
+        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        note = _frequency_to_note(frequency)
+        octave = note / 12
+        tone = int(note % 12)
+
+        return "%s%d" % (note_names[tone], octave)
+
+
     pygame.init()
     pygame.display.set_caption("Floppy Drive Dyno Test")
     screen = pygame.display.set_mode((640, 480))
@@ -152,6 +158,8 @@ def main():
     fps = 100
     fps_i = 0
 
+    font = pygame.font.Font("./fonts/lcd.ttf", 18)
+
     while 1:
         clock.tick(fps) # Lock the framerate
         swmixer.tick()
@@ -160,10 +168,20 @@ def main():
         vol = micsnd.data.max() # max 32767
         vol_percent = (vol * 100 / 32767)
 
-        if fps_i == fps / 16 and f_i < len(frequencies):
+        if fps_i == fps / 4 and f_i < len(frequencies):
             if f_i < len(frequencies):
                 graph.add_point(frequencies[f_i], vol_percent)
-                print "Freq: %s Hz @ Volume level: %d%%" % (frequencies[f_i], vol_percent)
+
+                screen.fill((0, 0, 0))
+                # Current frequency
+                freq_text = font.render("Frequency: %d Hz (%s)" %
+                                        (frequencies[f_i],
+                                         get_note_name_from_frequency(frequencies[f_i])), 0, pygame.Color("red"))
+                screen.blit(freq_text, (75, 25))
+
+                # Current volume
+                freq_text = font.render("Volume: %d%%" % vol_percent, 0, pygame.Color("red"))
+                screen.blit(freq_text, (screen.get_width() - freq_text.get_width() - 50, 25))
             fps_i = 0
             f_i += 1
 
@@ -175,7 +193,11 @@ def main():
                 pygame.quit()
                 return
 
-        screen.fill((0, 0, 0))
+
+
+
+
+
         graph.draw(screen)
         pygame.display.flip()
 
