@@ -66,7 +66,7 @@ class Graph:
         for i in range(x_divisors + 1): # x-values - bottom (frequenies)
             x_div_pixels = self.x_size / x_divisors
             #x_text = self.font.render(str(int(i * (self.x_max / x_divisors))), 0, pygame.Color("green"))
-            x_text = self.font.render(str(int(self.frequency_table[i * self.vals_per_x_div])), 0, pygame.Color("green"))
+            x_text = self.font.render("%d" % round(self.frequency_table[i * self.vals_per_x_div]), 0, pygame.Color("green"))
             surface.blit(x_text, (self.x_pos + i * x_div_pixels - x_text.get_width() / 2, self.y_pos + self.y_size + 12))
 
         for i in range(x_divisors): # x-values - top (octaves)
@@ -174,7 +174,7 @@ def main():
 
                 screen.fill((0, 0, 0))
                 # Current frequency
-                freq_text = font.render("Frequency: %d Hz (%s)" %
+                freq_text = font.render("Frequency: %.2f Hz (%s)" %
                                         (frequencies[f_i],
                                          get_note_name_from_frequency(frequencies[f_i])), 0, pygame.Color("red"))
                 screen.blit(freq_text, (75, 25))
