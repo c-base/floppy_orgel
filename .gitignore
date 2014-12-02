@@ -1,2 +1,5 @@
 .idea
 *.pyc
+/firmware/stm32f407/portable/Filesystem/fatfs/desktop.ini
+/firmware/stm32f407/portable/Filesystem/fatfs/drivers/desktop.ini
+/firmware/stm32f407/portable/Filesystem/fatfs/option/desktop.ini

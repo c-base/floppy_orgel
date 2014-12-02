@@ -180,7 +180,7 @@ void LCD_PutChar(int16_t PosX, int16_t PosY, char c)
 		{
 			if ( ((TmpChar >> (7-j)) & 0x01) == 0x01)
 			{
-                          Pixel(PosX +j, PosY + i, TextColor); 
+                          Pixel(PosX +j, PosY + i, TextColor);
 			}
 			else
 			{
@@ -226,7 +226,7 @@ void LCD_PutChar(int16_t PosX, int16_t PosY, char c)
 		{
 			if ( ((TmpChar >> (7-j)) & 0x01) == 0x01)
 			{
-                          Pixel(PosX +j, PosY + i, TextColor); 
+                          Pixel(PosX +j, PosY + i, TextColor);
 			}
 			else
 			{
@@ -292,7 +292,7 @@ void LCD_StringLine(uint16_t PosX, uint16_t PosY, uint8_t *str)
 		LCD_PutChar(PosX, PosY, TempChar);
 		if (PosX < 232)
 		{
-                  PosX += 8;           
+                  PosX += 8;
                   if(asciisize==24)
                   {
                     PosX+=8;
@@ -627,7 +627,7 @@ void LCD_FSMCConfig(void)
   FSMC_NORSRAMInitStructure.FSMC_WaitSignal = FSMC_WaitSignal_Disable;
   FSMC_NORSRAMInitStructure.FSMC_AsynchronousWait = FSMC_AsynchronousWait_Disable;
   FSMC_NORSRAMInitStructure.FSMC_ExtendedMode = FSMC_ExtendedMode_Disable;
-  FSMC_NORSRAMInitStructure.FSMC_WriteBurst = FSMC_WriteBurst_Enable;//disable
+  FSMC_NORSRAMInitStructure.FSMC_WriteBurst = FSMC_WriteBurst_Enable; //disable
   FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &FSMC_NORSRAMTimingInitStructure;
   
   FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);
@@ -635,7 +635,7 @@ void LCD_FSMCConfig(void)
   FSMC_NORSRAMTimingInitStructure.FSMC_AddressHoldTime = 0;	//0   
   FSMC_NORSRAMTimingInitStructure.FSMC_DataSetupTime = 4;	//3   
   FSMC_NORSRAMTimingInitStructure.FSMC_BusTurnAroundDuration = 0;
-  FSMC_NORSRAMTimingInitStructure.FSMC_CLKDivision = 1;//1
+  FSMC_NORSRAMTimingInitStructure.FSMC_CLKDivision = 1; //1
   FSMC_NORSRAMTimingInitStructure.FSMC_DataLatency = 0;
   FSMC_NORSRAMTimingInitStructure.FSMC_AccessMode = FSMC_AccessMode_A;	
   FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &FSMC_NORSRAMTimingInitStructure;

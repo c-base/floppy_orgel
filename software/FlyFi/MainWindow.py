@@ -187,7 +187,6 @@ class MainWindow(QtGui.QMainWindow):
         self.fout = FloppyOut()
         self.settingswindow = SettingsWindow(self.midi_in, self.fout)
          
-         
         self.init_ui()
         self.midi_in.start_midi_polling()
 

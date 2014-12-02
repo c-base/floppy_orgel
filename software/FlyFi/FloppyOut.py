@@ -63,7 +63,7 @@ class FloppyOut():
 
     def __init__(self):
         self.MAX_CHANNELS = 16
-        self.ARDUINO_RESOLUTION = 40 # the timer of the arduino fires every 40 miliseconds
+        self.ARDUINO_RESOLUTION = 1 # the timer of the arduino fires every 40 microseconds
         self.BAUDRATE = 9600
         self.midi_channels = []
         self._used_serial_ports = {}
@@ -142,29 +142,34 @@ class FloppyOut():
 
     
           
-    def play_tone(self, midi_channel, frequency): 
+    def play_tone(self, midi_channel, frequency):
         if midi_channel < 1 or midi_channel > self.MAX_CHANNELS:
             raise Exception("channel '%d' out of range. it has to be between 1 - %d" % (midi_channel, self.MAX_CHANNELS) )
+    
+        #if frequency != 0:
+            #half_period = (1000000.0 / frequency) / (2.0 * self.ARDUINO_RESOLUTION) # period in microseconds
+            #half_period = 0
 
-        if frequency != 0:
-            half_period = (1000000.0 / frequency) / (2.0 * self.ARDUINO_RESOLUTION) # period in microseconds
-        else:
-            half_period = 0
-
-        # build 3 byte data packet for floppy
-        # 1: physical_pin (see microcontroller code for further information)
-        # 2: half_period
+        print "frequency: %d Hz" % (frequency)
+        prescaler = 8
+        crystal_clock = 20000000 # Mhz
+        if(frequency > 440):
+          return
+                
+        ticks = round(crystal_clock / (2.0 * prescaler * frequency)) if frequency != 0 else 0
  
-        physical_pin = (self.midi_channels[midi_channel - 1].floppy_channel - 1) * 2
-        data = struct.pack('B', physical_pin) + struct.pack('>H', int(half_period))
-        
+        physical_pin = (self.midi_channels[midi_channel - 1].floppy_channel - 1)
+        data = struct.pack('B', 0x55) + struct.pack('B', 0xAA) + struct.pack('B', midi_channel) + struct.pack('>H', int(ticks))   
+        print repr(data);        
         try:
             self._used_serial_ports[self.midi_channels[midi_channel - 1].serial_port].write(data)
+            #print "Playing tone: %d" % frequency
         except:
-            pass #print "serial port error"
+            print "serial port error on play tone for midi_channel: %d" % midi_channel
         
     
     def play_tones(self, channel_frequency_list):
+        print "Playing tones"
         if midi_channel < 1 or midi_channel > self.MAX_CHANNELS:
             raise Exception("channel '%d' out of range. it has to be between 1 - %d" % (midi_channel, self.MAX_CHANNELS) )
             
@@ -181,16 +186,28 @@ class FloppyOut():
                 half_period = (1000000.0 / frequency) / (2.0 * self.ARDUINO_RESOLUTION) # period in microseconds
             else:
                 half_period = 0
-
-            # build 3 byte data packet for floppy
-            # 1: physical_pin (see microcontroller code for further information)
-            # 2: half_period
+                       
+            prescaler = 8
+            crystal_clock = 20000000 # Mhz
      
-            physical_pin = (self.midi_channels[tone.midi_channel - 1].floppy_channel - 1) * 2
-            data += struct.pack('B', physical_pin) + struct.pack('>H', int(half_period))
-
+            if(frequency > 440):
+              return
+      
+            ticks = round(crystal_clock / (2.0 * prescaler * frequency))
+                
+            prescaler = 8
+            crystal_clock = 20000000 # Mhz
+            frequency = (2**(1.0/12))**(midi_note - 69) * 440               
+            if(frequency > 440):
+              return
+              
+            ticks = round(crystal_clock / (2.0 * prescaler * frequency))
+     
+            physical_pin = (self.midi_channels[tone.midi_channel - 1].floppy_channel - 1)
+            data += struct.pack('B', 0x55) + struct.pack('B', 0xAA) + struct.pack('B', physical_pin) + struct.pack('>H', int(ticks))
         try:
             self._used_serial_ports[self.midi_channels[midi_channel - 1].serial_port].write(data)
+            print "Playing tones: %d" % frequency
         except:
             pass #print "serial port error"
     
@@ -222,6 +239,8 @@ class FloppyOut():
             # This is solution only works, when all drives are using the same serial port!
             # TODO: sort all events by serial ports and THEN do the sends
             self._used_serial_ports[self.midi_channels[midi_channel - 1].serial_port].write(data)
+            print "Playing notes: %d" % frequency
+            
             #print "len: %d" % len(data)
         except:
             pass #print "serial port error"
@@ -231,11 +250,21 @@ class FloppyOut():
             raise Exception("channel '%d' out of range. it has to be between 1 - %d" % (midi_channel, self.MAX_CHANNELS) )
             
         half_period = self.midiHalfperiods[midi_note]
-        physical_pin = (self.midi_channels[midi_channel - 1].floppy_channel - 1) * 2
-        data = struct.pack('B', physical_pin) + struct.pack('>H', int(half_period))
+        midi_channel = (self.midi_channels[midi_channel - 1].floppy_channel - 1)
+                
+        prescaler = 8
+        crystal_clock = 20000000 # Mhz
+        frequency = (2**(1.0/12))**(midi_note - 69) * 440
+           
+        if(frequency > 440):
+          return
+  
+        ticks = round(crystal_clock / (2.0 * prescaler * frequency))
         
         try:
+            data = struct.pack('B', 0x55) + struct.pack('B', 0xAA) + struct.pack('B', midi_channel) + struct.pack('>H', int(ticks))        
             self._used_serial_ports[self.midi_channels[midi_channel - 1].serial_port].write(data)
+            #print "Playing note: %d on channel: %d" % (frequency, midi_channel)
         except:
             pass #print "serial port error"
             

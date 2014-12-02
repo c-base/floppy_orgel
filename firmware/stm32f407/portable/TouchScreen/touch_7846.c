@@ -1,6 +1,6 @@
 #include "touch_7846.h"
 #include "SSD1289.h"
-#include "stm32f4xx_it.h"
+//#include "stm32f4xx_it.h"
 #include <stdio.h>
 
 Pen_Holder Pen_Point;

@@ -21,7 +21,7 @@
     
 
 /*----------Stack Configuration-----------------------------------------------*/
-#define STACK_SIZE       0x00000200      /*!< Stack size (in Words)           */
+#define STACK_SIZE       0x00000800      /*!< Stack size (in Words)           */
 __attribute__ ((section(".co_stack")))
 unsigned long pulStack[STACK_SIZE];
 
@@ -308,8 +308,8 @@ void Default_Reset_Handler(void)
   */
 #pragma weak Reset_Handler = Default_Reset_Handler
 #pragma weak NMI_Handler = Default_Handler
-#pragma weak HardFault_Handler = Default_Handler
-#pragma weak MemManage_Handler = Default_Handler
+#pragma weak HardFault_Handler = hardfault //Default_Handler
+#pragma weak MemManage_Handler = memmanage //Default_Handler
 #pragma weak BusFault_Handler = Default_Handler
 #pragma weak UsageFault_Handler = Default_Handler
 #pragma weak SVC_Handler = Default_Handler
@@ -407,6 +407,16 @@ void Default_Reset_Handler(void)
   * @param  None
   * @retval None
   */
+
+static void hardfault(void) {
+  Default_Handler();
+}
+
+static void memmanage(void) {
+  Default_Handler();
+}
+
+
 static void Default_Handler(void)
 {
 	/* Go into an infinite loop. */
