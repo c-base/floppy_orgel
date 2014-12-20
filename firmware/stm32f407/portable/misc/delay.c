@@ -1,23 +1,14 @@
 #include "delay.h"
 
-static __IO uint32_t TimingDelay ;
+void delayUs(uint32_t us) {
+  TIM2->CNT = 0;
+  while(TIM2->CNT < us);
+}
 
-void Delay(__IO uint32_t nTime)
-{
-  TimingDelay = nTime;
-
-  while(TimingDelay != 0)
-  {
-	  TimingDelay --;
-  }
+void delayMs(uint32_t ms) {
+  for(int i = 0; i < ms; i++)
+    delayUs(1000);
 }
 
 
-void TimingDelay_Decrement(void)
-{
-  if (TimingDelay != 0x00)
-  {
-    TimingDelay--;
-  }
-}
 

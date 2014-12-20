@@ -30,7 +30,7 @@
 
 /* Put your global defines for all libraries here used in your project */
 #define FATFS_USE_SDIO             1 // Use SDIO mode
-#define FATFS_SDIO_4BIT            0 // 1-Bit SDIO mode
+#define FATFS_SDIO_4BIT            1 // 1-Bit SDIO mode
 #define FATFS_USE_DETECT_PIN       0 // Disable Card detect pin
 #define FATFS_USE_WRITEPROTECT_PIN 0 // Disable Write protect pin
 #define FATFS_USE_USB 0 // Disable USB in FatFS library

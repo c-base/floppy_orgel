@@ -1,8 +1,9 @@
 #ifndef _MIDIFILE_H
 #define _MIDIFILE_H
 
-#include "ff.h"
+#include <stdint.h>
 #include "midiinfo.h"		/* enumerations and constants for GM */
+#include "ff.h"
 
 /*
  * midiFile.c -  Header file for Steevs MIDI Library
@@ -32,17 +33,14 @@
 **						no use once the file has been created, i.e. CreateFile
 **						or SetTrack (those data is embedded into the file, but
 **						not explicitly stored)
-**		midiSong*		For operations that work across the song, i.e. SetTempo
-**		midiTrack*		For operations on a specific track, i.e. AddNoteOn
+**		midiSong*   For operations that work across the song, i.e. SetTempo
+**		midiTrack*  For operations on a specific track, i.e. AddNoteOn
 */
 
 /*
 ** Types because we're dealing with files, and need to be careful
 */
-typedef	unsigned char		BYTE;
-typedef	unsigned short		WORD;
-typedef	unsigned long		DWORD;
-typedef int					BOOL;
+typedef int32_t	  BOOL;
 #ifndef TRUE
 #define TRUE	1
 #endif
@@ -50,16 +48,13 @@ typedef int					BOOL;
 #define FALSE	0
 #endif
 
-
-static void read_mem_from_pos(void* dst, DWORD pos, DWORD length);
-static void read_string_from_pos_s(void* dst, DWORD pos, DWORD max_length);
-static DWORD read_dword_value_from_pos(DWORD pos);
-static WORD read_word_value_from_pos(DWORD pos);
-static BYTE read_byte_value_from_pos(DWORD pos);
+// Embedded Constants
+#define META_EVENT_MAX_DATA_SIZE 128 // The meta event size must be at least 5 bytes long, to store: variable 4 byte length, 1 byte event id.
 
 /*
 ** MIDI Constants
 */
+#define MIDI_BPM_DEFAULT    120
 #define MIDI_PPQN_DEFAULT		384
 #define MIDI_VERSION_DEFAULT	1
 
@@ -67,207 +62,213 @@ static BYTE read_byte_value_from_pos(DWORD pos);
 ** MIDI Limits
 */
 
-// This settings are very important for using on an embedded system!
-// When using default values, this structure will need a memory ammount of ~130KB!
-// Since the STM32 board has only 8KB RAM, this values have been limited.
-// All 256 possible midi channels aren't needed on floppy drives, so 16 should be enough.
-// Polyphony is not possible at all on floppies so the value has been changed to 4 (for overlapping tones).
-// This settings will only need 1KB instead of ~130KB
-//
-// - coon
+// This parameter should be set as small as possible. Each track will need 60 Bytes of memory.
+// Using 32 Tracks will need about 1KB of RAM.
+#define MAX_MIDI_TRACKS			32  // [default: 32] - Maximum supported tracks. Can be set to 1 on MIDI type 0 tracks, should be at least 1 on MIDI type 1 files.
 
-#define MAX_MIDI_TRACKS		 16 // default: 256
-#define MAX_TRACK_POLYPHONY		 4 // 64
+// Don't change this!
+#define MICROSECONDS_PER_MINUTE 60000000L
 
-/*
-** MIDI structures, accessibly externably
-*/
+// temporary, move back to c file later, to make this private!
 /*
 ** Internal Data Structures
 */
 typedef struct 	{
-	BYTE note, chn;
-	BYTE valid, p2;
-	DWORD end_pos;
+  uint8_t note, chn;
+  uint8_t valid, p2;
+  uint32_t end_pos;
 } MIDI_LAST_NOTE;
 
+typedef struct {
+  int32_t	iIdx;
+  int32_t	iEndPos;
+} MIDI_END_POINT;
+
 typedef struct 	{
-	DWORD ptr2;
-	DWORD pBase2;
-	DWORD pEnd2;
+  uint32_t ptrNew;
+  uint32_t pBaseNew;
+  uint32_t pEndNew;
 
+  uint32_t pos; // position of file pointer
+  int32_t deltaTime; // relative offset, when this event occurs. May be negative, if current event is delayed
+  /* For Reading MIDI Files */
+  uint32_t sz;						/* size of whole iTrack */
+  /* For Writing MIDI Files */
+  uint32_t iBlockSize;				/* max size of track */
+  uint8_t iDefaultChannel;		/* use for write only */
+  uint8_t last_status;				/* used for running status */
 
-	DWORD pos;
-	DWORD dt;
-	/* For Reading MIDI Files */
-	DWORD size;						/* size of whole iTrack */
-	/* For Writing MIDI Files */
-	DWORD iBlockSize;				/* max size of track */
-	BYTE iDefaultChannel;			/* use for write only */
-	BYTE last_status;				/* used for running status */
-
-	MIDI_LAST_NOTE LastNote[MAX_TRACK_POLYPHONY];
 } MIDI_FILE_TRACK;
 
 typedef struct 	{
-	DWORD	iHeaderSize;
-	/**/
-	WORD	iVersion;		/* 0, 1 or 2 */
-	WORD	iNumTracks;		/* number of tracks... (will be 1 for MIDI type 0) */
-	WORD	PPQN;			/* pulses per quarter note */
+  uint32_t	iHeaderSize;
+  /**/
+  uint16_t	iVersion;		/* 0, 1 or 2 */
+  uint16_t	iNumTracks;		/* number of tracks... (will be 1 for MIDI type 0) */
+  uint16_t	PPQN;			/* pulses per quarter note */
 } MIDI_HEADER;
 
 typedef struct {
-	FIL					*pFile;
-	BOOL				bOpenForWriting;
+  FIL				*pFile;
+  BOOL				bOpenForWriting;
 
-	MIDI_HEADER			Header;
-	BYTE *ptr;			/* to whole data block */
-	DWORD ptr2;
-	DWORD file_sz;
+  MIDI_HEADER			Header;
+  uint32_t file_sz;
+  float msPerTick; // microseconds per tick
 
-	MIDI_FILE_TRACK		Track[MAX_MIDI_TRACKS];
+  MIDI_FILE_TRACK		Track[MAX_MIDI_TRACKS];
 } _MIDI_FILE;
 
-
-//typedef	void 	_MIDI_FILE;
+/*
+** MIDI structures, accessibly externably
+*/
+typedef	void 	MIDI_FILE;
 typedef struct {
-					tMIDI_MSG	iType;
+          tMIDI_MSG	iType;
 
-					DWORD		dt;		/* delta time */
-					DWORD		dwAbsPos;
-					DWORD		iMsgSize;
+          int32_t		dt;		/* delta time */
+          uint32_t		dwAbsPos;
+          uint32_t		iMsgSize;
 
-					BOOL		bImpliedMsg;
-					tMIDI_MSG	iImpliedMsg;
+          BOOL		bImpliedMsg;
+          tMIDI_MSG	iImpliedMsg;
 
-					/* Raw data chunk */
-					BYTE data[128];		/* data block */
-					//BYTE* data;		/* data block */
-					DWORD data_sz;
-					
-					union {
-						struct {
-								int			iNote;
-								int			iChannel;
-								int			iVolume;
-								} NoteOn;
-						struct {
-								int			iNote;
-								int			iChannel;
-								} NoteOff;
-						struct {
-								int			iNote;
-								int			iChannel;
-								int			iPressure;
-								} NoteKeyPressure;
-						struct {
-								int			iChannel;
-								tMIDI_CC	iControl;
-								int			iParam;
-								} NoteParameter;
-						struct {
-								int			iChannel;
-								int			iProgram;
-								} ChangeProgram;
-						struct {
-								int			iChannel;
-								int			iPressure;
-								} ChangePressure;
-						struct {
-								int			iChannel;
-								int			iPitch;
-								} PitchWheel;
-						struct {
-								tMIDI_META	iType;
-								union {
-									int					iMIDIPort;
-									int					iSequenceNumber;
-									struct {
-										//BYTE			*pData;
-										BYTE pData[256]; // 256 byte for meta events texts... (hope this is enough)
-										
-										} Text;
-									struct {
-										int				iBPM;
-										} Tempo;
-									struct {
-										int				iHours, iMins;
-										int				iSecs, iFrames,iFF;
-										} SMPTE;
-									struct {
-										tMIDI_KEYSIG	iKey;
-										} KeySig;
-									struct {
-										int				iNom, iDenom;
-										} TimeSig;
-									struct {
-										BYTE			pData[256];
-										int				iSize;
-										} Sequencer;
-									} Data;
-								} MetaEvent;
-						struct {
-								BYTE*		pData;
-								int			iSize;
-								} SysEx;
-						} MsgData;
+          /* Raw data chunk */
+          uint8_t dataEmbedded[META_EVENT_MAX_DATA_SIZE + 1]; // constant data block (+ 1 byte for nullterminator on text events)
+          uint32_t data_sz_embedded; // This is the real size of meta text data!
 
-				/* State information - Please treat these as private*/
-				tMIDI_MSG	iLastMsgType;
-				BYTE		iLastMsgChnl;
-	
-				} MIDI_MSG;
+          union {
+            struct {
+                int32_t			iNote;
+                int32_t			iChannel;
+                int32_t			iVolume;
+                } NoteOn;
+            struct {
+                int32_t			iNote;
+                int32_t			iChannel;
+                } NoteOff;
+            struct {
+                int32_t			iNote;
+                int32_t			iChannel;
+                int32_t			iPressure;
+                } NoteKeyPressure;
+            struct {
+                int32_t			iChannel;
+                tMIDI_CC	iControl;
+                int32_t			iParam;
+                } NoteParameter;
+            struct {
+                int32_t			iChannel;
+                int32_t			iProgram;
+                } ChangeProgram;
+            struct {
+                int32_t			iChannel;
+                int32_t			iPressure;
+                } ChangePressure;
+            struct {
+                int32_t			iChannel;
+                int32_t			iPitch;
+                } PitchWheel;
+            struct {
+                tMIDI_META	iType;
+                uint8_t iSize;
+                union {
+                  int32_t					iMIDIPort;
+                  int32_t					iSequenceNumber;
+                  struct {
+                    int32_t strLen;
+                    uint8_t			*pData;
+                    } Text;
+                  struct {
+                    int32_t				iBPM;
+                    } Tempo;
+                  struct {
+                    int32_t				iHours, iMins;
+                    int32_t				iSecs, iFrames,iFF;
+                    } SMPTE;
+                  struct {
+                    tMIDI_KEYSIG	iKey;
+                    } KeySig;
+                  struct {
+                    int32_t				iNom, iDenom;
+                    } TimeSig;
+                  struct {
+                    uint8_t			*pData;
+                    int32_t				iSize;
+                    } Sequencer;
+                  } Data;
+                } MetaEvent;
+            struct {
+                uint8_t		*pData;
+                int32_t			iSize;
+                } SysEx;
+            } MsgData;
+
+        /* State information - Please treat these as private*/
+        tMIDI_MSG	iLastMsgType;
+        uint8_t		iLastMsgChnl;
+  
+        } MIDI_MSG;
 
 /*
 ** midiFile* Prototypes
 */
-// _MIDI_FILE  *midiFileCreate(const char *pFilename, BOOL bOverwriteIfExists);
-static  int			midiFileSetTracksDefaultChannel(_MIDI_FILE *pMF, int iTrack, int iChannel);
-static int			midiFileGetTracksDefaultChannel(const _MIDI_FILE *pMF, int iTrack);
-BOOL		midiFileFlushTrack(_MIDI_FILE *pMF, int iTrack, BOOL bFlushToEnd, DWORD dwEndTimePos);
-static  BOOL		midiFileSyncTracks(_MIDI_FILE *pMF, int iTrack1, int iTrack2);
-static  int			midiFileSetPPQN(_MIDI_FILE *pMF, int PPQN);
-static  int			midiFileGetPPQN(const _MIDI_FILE *pMF);
-static  int			midiFileSetVersion(_MIDI_FILE *pMF, int iVersion);
-static  int			midiFileGetVersion(const _MIDI_FILE *pMF);
-void 		midiFileOpen( _MIDI_FILE* pMF, const char *pFilename, BOOL* open_success );
-static BOOL		midiFileClose(_MIDI_FILE *pMF);
+int32_t readChunkFromFile(FIL* pFile, void* dst, int32_t startPos, size_t num);
+int32_t readByteFromFile(FIL* pFile, uint8_t* dst, int32_t startPos);
+int32_t readWordFromFile(FIL* pFile, uint16_t* dst, int32_t startPos);
+int32_t readDwordFromFile(FIL* pFile, uint32_t* dst, int32_t startPos);
+void setPlaybackTempo(_MIDI_FILE* midiFile, int32_t bpm);
+
+MIDI_FILE  *midiFileCreate(const char *pFilename, BOOL bOverwriteIfExists);
+int32_t			midiFileSetTracksDefaultChannel(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iChannel);
+int32_t			midiFileGetTracksDefaultChannel(MIDI_FILE* _pMFembedded, int32_t iTrack);
+BOOL	  midiFileFlushTrack(MIDI_FILE* _pMFembedded, int32_t iTrack, BOOL bFlushToEnd, uint32_t dwEndTimePos);
+BOOL		midiFileSyncTracks(MIDI_FILE* _pMFembedded, int32_t iTrack1, int32_t iTrack2);
+int32_t			midiFileSetPPQN(MIDI_FILE* _pMFembedded, int32_t PPQN);
+int32_t			midiFileGetPPQN(MIDI_FILE* _pMFembedded);
+int32_t			midiFileSetVersion(MIDI_FILE* _pMFembedded, int32_t iVersion);
+int32_t			midiFileGetVersion(MIDI_FILE* _pMFembedded);
+MIDI_FILE  *midiFileOpen(const char *pFilename);
+BOOL		midiFileClose(MIDI_FILE* _pMFembedded);
 
 /*
 ** midiSong* Prototypes
 */
-BOOL		midiSongAddSMPTEOffset(_MIDI_FILE *pMF, int iTrack, int iHours, int iMins, int iSecs, int iFrames, int iFFrames);
-BOOL		midiSongAddSimpleTimeSig(_MIDI_FILE *pMF, int iTrack, int iNom, int iDenom);
-BOOL		midiSongAddTimeSig(_MIDI_FILE *pMF, int iTrack, int iNom, int iDenom, int iClockInMetroTick, int iNotated32nds);
-BOOL		midiSongAddKeySig(_MIDI_FILE *pMF, int iTrack, tMIDI_KEYSIG iKey);
-BOOL		midiSongAddTempo(_MIDI_FILE *pMF, int iTrack, int iTempo);
-BOOL		midiSongAddMIDIPort(_MIDI_FILE *pMF, int iTrack, int iPort);
-BOOL		midiSongAddEndSequence(_MIDI_FILE *pMF, int iTrack);
+BOOL		midiSongAddSMPTEOffset(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iHours, int32_t iMins, int32_t iSecs, int32_t iFrames, int32_t iFFrames);
+BOOL		midiSongAddSimpleTimeSig(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iNom, int32_t iDenom);
+BOOL		midiSongAddTimeSig(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iNom, int32_t iDenom, int32_t iClockInMetroTick, int32_t iNotated32nds);
+BOOL		midiSongAddKeySig(MIDI_FILE* _pMFembedded, int32_t iTrack, tMIDI_KEYSIG iKey);
+BOOL		midiSongAddTempo(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iTempo);
+BOOL		midiSongAddMIDIPort(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iPort);
+BOOL		midiSongAddEndSequence(MIDI_FILE* _pMFembedded, int32_t iTrack);
 
 /*
 ** midiTrack* Prototypes
 */
-BOOL		midiTrackAddRaw(_MIDI_FILE *pMF, int iTrack, int iDataSize, const BYTE *pData, BOOL bMovePtr, int iDeltaTime);
-BOOL		midiTrackIncTime(_MIDI_FILE *pMF, int iTrack, int iDeltaTime, BOOL bOverridePPQN);
-BOOL		midiTrackAddText(_MIDI_FILE *pMF, int iTrack, tMIDI_TEXT iType, const char *pTxt);
-BOOL		midiTrackAddMsg(_MIDI_FILE *pMF, int iTrack, tMIDI_MSG iMsg, int iParam1, int iParam2);
-BOOL		midiTrackSetKeyPressure(_MIDI_FILE *pMF, int iTrack, int iNote, int iAftertouch);
-BOOL		midiTrackAddControlChange(_MIDI_FILE *pMF, int iTrack, tMIDI_CC iCCType, int iParam);
-BOOL		midiTrackAddProgramChange(_MIDI_FILE *pMF, int iTrack, int iInstrPatch);
-BOOL		midiTrackChangeKeyPressure(_MIDI_FILE *pMF, int iTrack, int iDeltaPressure);
-BOOL		midiTrackSetPitchWheel(_MIDI_FILE *pMF, int iTrack, int iWheelPos);
-BOOL		midiTrackAddNote(_MIDI_FILE *pMF, int iTrack, int iNote, int iLength, int iVol, BOOL bAutoInc, BOOL bOverrideLength);
-BOOL		midiTrackAddRest(_MIDI_FILE *pMF, int iTrack, int iLength, BOOL bOverridePPQN);
-BOOL		midiTrackGetEndPos(_MIDI_FILE *pMF, int iTrack);
+BOOL		midiTrackAddRaw(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iDataSize, const uint8_t *pData, BOOL bMovePtr, int32_t iDeltaTime);
+BOOL		midiTrackIncTime(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iDeltaTime, BOOL bOverridePPQN);
+BOOL		midiTrackAddText(MIDI_FILE* _pMFembedded, int32_t iTrack, tMIDI_TEXT iType, const char *pTxt);
+BOOL		midiTrackAddMsg(MIDI_FILE* _pMFembedded, int32_t iTrack, tMIDI_MSG iMsg, int32_t iParam1, int32_t iParam2);
+BOOL		midiTrackSetKeyPressure(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iNote, int32_t iAftertouch);
+BOOL		midiTrackAddControlChange(MIDI_FILE* _pMFembedded, int32_t iTrack, tMIDI_CC iCCType, int32_t iParam);
+BOOL		midiTrackAddProgramChange(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iInstrPatch);
+BOOL		midiTrackChangeKeyPressure(MIDI_FILE *pMF, MIDI_FILE* _pMFembedded,  int32_t iTrack, int32_t iDeltaPressure);
+BOOL		midiTrackSetPitchWheel(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iWheelPos);
+BOOL		midiTrackAddNote(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iNote, int32_t iLength, int32_t iVol, BOOL bAutoInc, BOOL bOverrideLength);
+BOOL		midiTrackAddRest(MIDI_FILE* _pMFembedded, int32_t iTrack, int32_t iLength, BOOL bOverridePPQN);
+BOOL		midiTrackGetEndPos(MIDI_FILE* _pMFembedded, int32_t iTrack);
 
 /*
 ** midiRead* Prototypes
 */
-int			midiReadGetNumTracks(const _MIDI_FILE *pMF);
-BOOL		midiReadGetNextMessage(const _MIDI_FILE *pMF, int iTrack, MIDI_MSG *pMsg);
-void		midiReadInitMessage(MIDI_MSG *pMsg);
-void		midiReadFreeMessage(MIDI_MSG *pMsg);
+int32_t midiReadGetNumTracks(const MIDI_FILE* _pMFembedded);
+BOOL		midiReadGetNextMessage(const MIDI_FILE* _pMFembedded, int32_t iTrack, MIDI_MSG* pMsgEmbedded);
+void midiReadInitMessage(MIDI_MSG *pMsg);
+
+// Internal helper functions
+static BOOL _midiValidateTrack(const _MIDI_FILE *pMFembedded, int32_t iTrack);
+static uint32_t _midiReadVarLen(_MIDI_FILE* pMFembedded, uint32_t* ptrNew, uint32_t* numEmbedded);
+static BOOL _midiReadTrackCopyData(_MIDI_FILE* pMFembedded, MIDI_MSG* pMsgEmbedded, uint32_t ptrEmbedded, size_t* szEmbedded, BOOL bCopyPtrData);
 
 
 #endif /* _MIDIFILE_H */

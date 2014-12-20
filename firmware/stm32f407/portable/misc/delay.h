@@ -2,9 +2,8 @@
 #define DELAY_H_
 #include "stm32f4xx.h"
 
-void Delay(__IO uint32_t nTime);
+void delayUs(uint32_t us);
+void delayMs(uint32_t ms);
 
-void TimingDelay_Decrement(void);
-static __IO uint32_t TimingDelay;
 
 #endif
