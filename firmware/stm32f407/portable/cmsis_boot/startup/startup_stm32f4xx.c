@@ -419,6 +419,7 @@ static void memmanage(void) {
 
 static void Default_Handler(void)
 {
+  SSD1289_Clear(0x0000FF); // Bluescreen
 	/* Go into an infinite loop. */
   printf("**************** CRASH: Hardfault! ****************\n\r");
 	while (1)

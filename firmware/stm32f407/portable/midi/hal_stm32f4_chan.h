@@ -6,6 +6,7 @@
 #include "stm32f4xx.h"
 #include "ff.h"
 
+
 // ---- Filesystem functions ----
 
 // Returns 1, if file was opened successfully or 0 on error.
@@ -32,7 +33,7 @@ long hal_ftell(FIL* pFile) {
 }
 
 int32_t hal_clock() {
-  return TIM2->CNT / 1000;
+  return TIM5->CNT / 1000;
 }
 
 char* strcpy_s(char* pDst, int szDst, const char* pSrc) {

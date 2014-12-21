@@ -7,7 +7,36 @@
 #include "NesGamePad.h"
 
 
+typedef struct {
+  _MIDI_FILE* pMidiFile;
+  MIDI_MSG msg[MAX_MIDI_TRACKS];
+  int32_t startTime;
+  int32_t currentTick;
+  int32_t lastTick;
+  int32_t deltaTick; // Must NEVER be negative!!!
+  BOOL eventsNeedToBeFetched;
+  BOOL trackIsFinished;
+  BOOL allTracksAreFinished;
+  float lastMsPerTick;
+  float timeScaleFactor;
+} MIDI_PLAYER;
+
+static MIDI_PLAYER g_midiPlayer;
+
 void enableMidiTimer() {
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+
+  TIM_TimeBaseInitTypeDef timerInitStructure;
+  timerInitStructure.TIM_Prescaler = 84 - 1; // 1 Mhz
+  timerInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+  timerInitStructure.TIM_Period = -1; // no period, use maximum of uint32_t
+  timerInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+  timerInitStructure.TIM_RepetitionCounter = 0;
+  TIM_TimeBaseInit(TIM5, &timerInitStructure);
+  TIM_Cmd(TIM5, ENABLE);
+}
+
+void enableDelayTimer() {
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 
   TIM_TimeBaseInitTypeDef timerInitStructure;
@@ -186,6 +215,7 @@ void init_stars() {
 	}
 }
 
+/* TODO: port to new library version!
 void move_and_draw_stars() {
 	// Move and draw the stars
 	int origin_x = SCREEN_RES_X / 2;
@@ -224,14 +254,232 @@ void move_and_draw_stars() {
 		}
 	}
 }
+*/
+
+BOOL midiPlayerOpenFile(MIDI_PLAYER* pMidiPlayer, const char* pFileName) {
+  pMidiPlayer->pMidiFile = midiFileOpen(pFileName);
+  if (!pMidiPlayer->pMidiFile)
+    return FALSE;
+
+  // Load initial midi events
+  for (int iTrack = 0; iTrack < midiReadGetNumTracks(pMidiPlayer->pMidiFile); iTrack++) {
+    midiReadGetNextMessage(pMidiPlayer->pMidiFile, iTrack, &pMidiPlayer->msg[iTrack]);
+    pMidiPlayer->pMidiFile->Track[iTrack].deltaTime = pMidiPlayer->msg[iTrack].dt;
+  }
+
+  pMidiPlayer->startTime = hal_clock();
+  pMidiPlayer->currentTick = 0;
+  pMidiPlayer->lastTick = 0;
+  pMidiPlayer->deltaTick; // Must NEVER be negative!!!
+  pMidiPlayer->eventsNeedToBeFetched = FALSE;
+  pMidiPlayer->trackIsFinished;
+  pMidiPlayer->allTracksAreFinished = FALSE;
+  pMidiPlayer->lastMsPerTick = pMidiPlayer->pMidiFile->msPerTick;
+  pMidiPlayer->timeScaleFactor = 1.0f;
+
+  return TRUE;
+}
+
+BOOL midiPlayerTick(MIDI_PLAYER* pMidiPlayer) {
+  if(pMidiPlayer->pMidiFile == NULL)
+    return FALSE;
+
+  if (fabs(pMidiPlayer->lastMsPerTick - pMidiPlayer->pMidiFile->msPerTick) > 0.001f) { // TODO: avoid floating point operation here!
+    // On a tempo change we need to transform the old absolute time scale to the new scale.
+    pMidiPlayer->timeScaleFactor = pMidiPlayer->lastMsPerTick / pMidiPlayer->pMidiFile->msPerTick;
+    pMidiPlayer->lastTick *= pMidiPlayer->timeScaleFactor;
+  }
+
+  pMidiPlayer->lastMsPerTick = pMidiPlayer->pMidiFile->msPerTick;
+  pMidiPlayer->currentTick = (hal_clock() - pMidiPlayer->startTime) / pMidiPlayer->pMidiFile->msPerTick;
+  pMidiPlayer->eventsNeedToBeFetched = TRUE;
+
+  int32_t start = TIM5->CNT; // DEBUG
+  while (pMidiPlayer->eventsNeedToBeFetched) { // This loop keeps all tracks synchronized in case of a lag
+    pMidiPlayer->eventsNeedToBeFetched = FALSE;
+    pMidiPlayer->allTracksAreFinished = TRUE;
+    pMidiPlayer->deltaTick = pMidiPlayer->currentTick - pMidiPlayer->lastTick;
+    if (pMidiPlayer->deltaTick < 0) {
+      printf("Warning: deltaTick is negative! Fast forward? deltaTick=%d", pMidiPlayer->deltaTick);
+      // TODO: correct time here!
+      pMidiPlayer->deltaTick = 0;
+    }
+
+    for (int iTrack = 0; iTrack < midiReadGetNumTracks(pMidiPlayer->pMidiFile); iTrack++) {
+      pMidiPlayer->pMidiFile->Track[iTrack].deltaTime -= pMidiPlayer->deltaTick;
+      pMidiPlayer->trackIsFinished = pMidiPlayer->pMidiFile->Track[iTrack].ptrNew == pMidiPlayer->pMidiFile->Track[iTrack].pEndNew;
+
+      if (!pMidiPlayer->trackIsFinished) {
+        if (pMidiPlayer->pMidiFile->Track[iTrack].deltaTime <= 0 && !pMidiPlayer->trackIsFinished) { // Is it time to play this event?
+          dispatchMidiMsg(pMidiPlayer->pMidiFile, iTrack, &pMidiPlayer->msg[iTrack]); // shoot
+          midiReadGetNextMessage(pMidiPlayer->pMidiFile, iTrack, &pMidiPlayer->msg[iTrack]); // reload
+          pMidiPlayer->pMidiFile->Track[iTrack].deltaTime += pMidiPlayer->msg[iTrack].dt;
+        }
+
+        if (pMidiPlayer->pMidiFile->Track[iTrack].deltaTime <= 0 && !pMidiPlayer->trackIsFinished)
+          pMidiPlayer->eventsNeedToBeFetched = TRUE;
+
+        pMidiPlayer->allTracksAreFinished = FALSE;
+      }
+      pMidiPlayer->lastTick = pMidiPlayer->currentTick;
+    }
+  }
+
+  uint32_t dispatchTime = (TIM5->CNT - start) / 1000;
+  if(dispatchTime > 0)
+    printf("Dispatch took: %d ms\n\r", dispatchTime);
+
+  return !pMidiPlayer->allTracksAreFinished; // TODO: close file
+}
+
+void drawCursor(uint32_t cursorPos) {
+  const uint32_t X_OFFSET = 25;
+  const uint32_t Y_OFFSET = 45;
+
+  SSD1289_DrawRect(X_OFFSET, Y_OFFSET + 18 * cursorPos, 5, 5, White);
+  const uint32_t LINE_OFFSET = 18;
+
+  uint32_t x[3] = { X_OFFSET,      // links oben
+                    X_OFFSET + 50, // rechts mitte
+                    X_OFFSET};     // links unten
+
+  uint32_t y[3] = { Y_OFFSET + 18 * cursorPos,       // links oben
+                    Y_OFFSET + 18 * cursorPos + 25,  // rechts mitte
+                    Y_OFFSET + 18 * cursorPos + 50}; // links unten
+}
+
+FRESULT drawTracks(char* path) {
+  DIR dirs;
+  FRESULT res;
+  BYTE i;
+  char *fn;
+  DWORD acc_size;       /* Work register for fs command */
+  WORD acc_files, acc_dirs;
+  FILINFO finfo;
+
+  static TCHAR lfname[_MAX_LFN];
+  finfo.lfname = lfname;
+  finfo.lfsize = 250;
+
+  static const uint32_t X_OFFSET = 35;
+  static const uint32_t Y_OFFSET = 40;
+
+  if (res = f_opendir(&dirs, path) == FR_OK) {
+    i = strlen(path);
+
+    int32_t itemCount = 0;
+    while (((res = f_readdir(&dirs, &finfo)) == FR_OK) && finfo.fname[0]) {
+      #if _USE_LFN
+        fn = *finfo.fname ? *finfo.lfname != 0 ? finfo.lfname : finfo.fname : finfo.fname;
+      #else
+        fn = finfo.fname;
+      #endif
+      if (finfo.fattrib & AM_DIR) {
+        acc_dirs++;
+        *(path + i) = '/'; strcpy(path + i + 1, fn);
+        SSD1289_Text(X_OFFSET, Y_OFFSET + 18 * itemCount++, path, White, Black);
+
+        res = drawTracks(path);
+        *(path+i) = '\0';
+
+        if (res != FR_OK) break;
+      } else {
+        SSD1289_Text(X_OFFSET, Y_OFFSET + 18 * itemCount++, fn, White, Black);
+
+        acc_files++;
+        acc_size += finfo.fsize;
+      }
+    }
+  }
+  else
+    printf("Failed opening directory: '%s'.\r\n", path);
+
+  for(int i = strlen(path); i > 0; i--) {
+    if(path[i] == '/')
+      path[i + 1] = '\0';
+  }
+
+  return res;
+}
+
+void drawMenu() {
+  static uint8_t lastStateCode = 0;
+  static union NesGamePadStates_t gamePad;
+  static BOOL firstStart = TRUE;
+
+  static const uint32_t X_OFFSET = 65;
+  static const uint32_t Y_OFFSET = 240 - 18;
+  static uint32_t cursorPos = 0;
+  static uint32_t maxCursorPos = 0;
+  static BOOL isPlaying = FALSE;
+
+  if(isPlaying)
+    if(!midiPlayerTick(&g_midiPlayer)) {
+      isPlaying = FALSE;
+      firstStart = TRUE;
+    }
 
 
-void drawFrame() {
-  LCD_Clear(BLACK);
-  move_and_draw_stars();
-  //Delay(0x00FFFF);
+  isPlaying = midiPlayerTick(&g_midiPlayer);
 
-  // TODO: backbuffered screen update here, to prevent flickering!
+  gamePad = getNesGamepadState();
+
+  if((lastStateCode != gamePad.code && gamePad.code != 0x00) || firstStart) {
+    SSD1289_Clear(Black);
+    SSD1289_Text(X_OFFSET - 30, 0, "Use the game pad to select a song", White, Black);
+    SSD1289_Text(X_OFFSET + 10, 18, "Press A button to start", White, Black);
+
+    if(gamePad.code == 0xFF) {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "Please plug in game pad", White, Black);
+    }
+    else if(gamePad.code == 0x00) {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "No button is pressed", White, Black);
+    }
+    else if(gamePad.states.A) {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing A", White, Black);
+      onMenuAction(cursorPos);
+    }
+    else if(gamePad.states.B) {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing B", White, Black);
+      onMenuBack();
+    }
+    else if(gamePad.states.Start) {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing Start", White, Black);
+      onMenuAction(cursorPos);
+    }
+    else if(gamePad.states.Select) {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing Select", White, Black);
+      onMenuBack();
+    }
+    else if(gamePad.states.North) {
+      cursorPos--;
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing North (UP)", White, Black);
+    }
+    else if(gamePad.states.South) {
+      cursorPos++;
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing South (DOWN)", White, Black);
+    }
+    else if(gamePad.states.West) {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing West (LEFT)", White, Black);
+    }
+    else if(gamePad.states.East) {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing West (RIGHT)", White, Black);
+    }
+    else {
+      //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing something else...", White, Black);
+    }
+
+    // Draw midi files here
+    static char trackName[256] = "";
+    drawTracks(trackName);
+    drawCursor(cursorPos);
+  }
+
+
+
+  lastStateCode = gamePad.code;
+  firstStart = FALSE;
+  //move_and_draw_stars();
 }
 
 void debugPrintln(char* text) {
@@ -239,9 +487,50 @@ void debugPrintln(char* text) {
 }
 
 
+// Menu
+// TODO: make much better! Prevent flickering etc!!!
+void onMenuBack() {
+  SSD1289_Clear(Red);
+}
 
-FRESULT scan_files (char* path)
-{
+void onMenuAction(uint32_t menuItem) {
+  DIR dirs;
+  FRESULT res;
+  FILINFO finfo;
+  static TCHAR lfname[_MAX_LFN];
+  finfo.lfname = lfname;
+  finfo.lfsize = 250;
+  static const uint32_t X_OFFSET = 65;
+
+  res = f_opendir(&dirs, "/");
+  if (res == FR_OK) {
+    int32_t currentItem = 0;
+    char* fn;
+
+    while (((res = f_readdir(&dirs, &finfo)) == FR_OK) && finfo.fname[0]) {
+      #if _USE_LFN
+        fn = *finfo.fname ? *finfo.lfname != 0 ? finfo.lfname : finfo.fname : finfo.fname;
+      #else
+        fn = finfo.fname;
+      #endif
+      if (finfo.fattrib & AM_DIR)
+        continue;
+      else {
+        if(currentItem++ == menuItem) {
+          midiPlayerOpenFile(&g_midiPlayer, fn);
+          SSD1289_Clear(Black);
+          static char infoText[256];
+          sprintf(infoText, "Now playing: %s", fn);
+          SSD1289_Text(X_OFFSET - 30, 0, infoText, White, Black);
+          SSD1289_Text(X_OFFSET + 10, 18, "Press B or Select button to stop", White, Black);
+          return;
+        }
+      }
+    }
+  }
+}
+
+FRESULT scan_files(char* path) {
   DIR dirs;
   FRESULT res;
   BYTE i;
@@ -540,23 +829,25 @@ void printTrackPrefix(uint32_t track, uint32_t tick, char* pEventName)  {
 char noteName[64]; // TOOD: refactor to const string array
 
 void onNoteOff(int32_t track, int32_t tick, int32_t channel, int32_t note) {
+  return;
+
   muGetNameFromNote(noteName, note);
   playNote(channel, 0);
 
-  return;
   printTrackPrefix(track, tick, "Note Off");
   printf("(%d) %s", channel, noteName);
   printf("\n\r");
 }
 
 void onNoteOn(int32_t track, int32_t tick, int32_t channel, int32_t note, int32_t velocity) {
+  return;
+
   muGetNameFromNote(noteName, note);
   if(velocity > 0)
     playNote(channel, note);
   else
     playNote(channel, 0);
 
-  return;
   printTrackPrefix(track, tick, "Note On");
   printf("(%d) %s [%d] %d", channel, noteName, note, velocity);
   printf("\n\r");
@@ -639,8 +930,6 @@ void onMetaCopyright(int32_t track, int32_t tick, char* pText) {
 }
 
 void onMetaTrackName(int32_t track, int32_t tick, char *pText) {
-  return;
-
   printTrackPrefix(track, tick, "Meta event ----");
   printf("Track name = '%s'", pText);
   printf("\n\r");
@@ -834,133 +1123,6 @@ void dispatchMidiMsg(_MIDI_FILE* midiFile, int32_t track, MIDI_MSG* msg) {
     }
 }
 
-BOOL playMidiFile(const char *pFilename) {
-  _MIDI_FILE* pMFembedded;
-  BOOL open_success;
-  int32_t timeToWait = 0;
-
-  pMFembedded = midiFileOpen(pFilename);
-  open_success = pMFembedded != NULL;
-
-  if (!open_success) {
-    return FALSE;
-  }
-
-  static MIDI_MSG msg[MAX_MIDI_TRACKS];
-  static MIDI_MSG msgEmbedded[MAX_MIDI_TRACKS];
-  int32_t any_track_had_data = 1;
-  uint32_t current_midi_tick = 0;
-  uint32_t ticks_to_wait = 0;
-  int32_t iNumTracks = midiReadGetNumTracks(pMFembedded);
-
-  for (int32_t iTrack = 0; iTrack < iNumTracks; iTrack++) {
-    midiReadInitMessage(&msgEmbedded[iTrack]);
-    midiReadGetNextMessage(pMFembedded, iTrack, &msgEmbedded[iTrack]);
-  }
-
-  printf("Midi Format: %d\n\r", pMFembedded->Header.iVersion);
-  printf("Number of tracks: %d\n\r", iNumTracks);
-  printf("Start playing...\n\r");
-
-  while (any_track_had_data) {
-    any_track_had_data = 1;
-    ticks_to_wait = -1;
-
-    for (int32_t iTrack = 0; iTrack < iNumTracks; iTrack++) {
-      while (current_midi_tick == pMFembedded->Track[iTrack].pos && pMFembedded->Track[iTrack].ptrNew < pMFembedded->Track[iTrack].pEndNew) {
-        dispatchMidiMsg(pMFembedded, iTrack, &msgEmbedded[iTrack]);
-
-        if (midiReadGetNextMessage(pMFembedded, iTrack, &msgEmbedded[iTrack])) {
-          any_track_had_data = 1; // 0 ???
-        }
-      }
-
-      // TODO: make this line of hell readable!
-      ticks_to_wait = ((int32_t)(pMFembedded->Track[iTrack].pos - current_midi_tick) > 0 && ticks_to_wait > pMFembedded->Track[iTrack].pos - current_midi_tick) ? pMFembedded->Track[iTrack].pos - current_midi_tick : ticks_to_wait;
-    }
-
-    if (ticks_to_wait == -1)
-      ticks_to_wait = 0;
-
-    // wait microseconds per tick here
-    timeToWait = TIM2->CNT + ticks_to_wait * pMFembedded->msPerTick * 1000;
-    while (TIM2->CNT < timeToWait); // just wait here...
-    current_midi_tick += ticks_to_wait;
-  }
-  midiFileClose(pMFembedded);
-
-  return TRUE;
-}
-
-
-BOOL playMidiFile2(const char *pFilename) {
-  _MIDI_FILE* pMFembedded;
-  static MIDI_MSG msgEmbedded[MAX_MIDI_TRACKS];
-
-  pMFembedded = midiFileOpen(pFilename);
-  if (!pMFembedded) {
-    return FALSE;
-  }
-  int32_t iNumTracks = midiReadGetNumTracks(pMFembedded);
-
-  printf("Midi Format: %d\n\r", pMFembedded->Header.iVersion);
-  printf("Number of tracks: %d\n\r", iNumTracks);
-  printf("Start playing...\n\r");
-
-  // Load initial midi events
-  for (int iTrack = 0; iTrack < iNumTracks; iTrack++) {
-    midiReadGetNextMessage(pMFembedded, iTrack, &msgEmbedded[iTrack]);
-    pMFembedded->Track[iTrack].deltaTime = msgEmbedded[iTrack].dt;
-  }
-
-  int32_t startTime = hal_clock();
-  int32_t currentTick = 0;
-  int32_t lastTick = 0;
-  int32_t deltaTick; // Must NEVER be negative!!!
-  BOOL eventsNeedToBeFetched = FALSE;
-  BOOL trackIsFinished;
-  BOOL allTracksAreFinished = FALSE;
-  float lastMsPerTick = pMFembedded->msPerTick;
-  float timeScaleFactor = 1.0f;
-
-  while (!allTracksAreFinished) {
-    if (fabs(lastMsPerTick - pMFembedded->msPerTick) > 0.01f) {
-      // On a tempo change we need to transform the old absolute time scale to the new scale.
-      timeScaleFactor = lastMsPerTick / pMFembedded->msPerTick;
-      lastTick *= timeScaleFactor;
-    }
-
-    lastMsPerTick = pMFembedded->msPerTick;
-    currentTick = (hal_clock() - startTime) / pMFembedded->msPerTick;
-    eventsNeedToBeFetched = TRUE;
-    while (eventsNeedToBeFetched) { // This loop keeps all tracks synchronized in case of a lag
-      eventsNeedToBeFetched = FALSE;
-      allTracksAreFinished = TRUE;
-      deltaTick = currentTick - lastTick;
-      if (deltaTick < 0) printf("DEBUG: bug in delta tick: deltaTick=%d\r\n", deltaTick);
-
-      for (int iTrack = 0; iTrack < iNumTracks; iTrack++) {
-        pMFembedded->Track[iTrack].deltaTime -= deltaTick;
-        trackIsFinished = pMFembedded->Track[iTrack].ptrNew == pMFembedded->Track[iTrack].pEndNew;
-
-        if (!trackIsFinished) {
-          if (pMFembedded->Track[iTrack].deltaTime <= 0 && !trackIsFinished) { // Is it time to play this event?
-            dispatchMidiMsg(pMFembedded, iTrack, &msgEmbedded[iTrack]); // shoot
-            midiReadGetNextMessage(pMFembedded, iTrack, &msgEmbedded[iTrack]); // reload
-            pMFembedded->Track[iTrack].deltaTime += msgEmbedded[iTrack].dt;
-          }
-
-          if (pMFembedded->Track[iTrack].deltaTime <= 0 && !trackIsFinished)
-            eventsNeedToBeFetched = TRUE;
-
-          allTracksAreFinished = FALSE;
-        }
-        lastTick = currentTick; // Is not set, if there is no event to be dispatched. TODO: make more explicit?
-      }
-    }
-  }
-}
-
 void debugMidiPlayer() {
   static char pMidiFile[256];
   static char dir[256] = { 0 };
@@ -993,30 +1155,33 @@ void debugMidiPlayer() {
 
 ///////////
 
+void debugPrintNesGamePadState() {
+  union NesGamePadStates_t state = getNesGamepadState();
+  if(state.code == 0xFF)
+    printf("Game pad is not plugged in\n\r");
+  else {
+    printf("A: ");      if(state.states.A)      printf(" ON"); else printf("OFF"); printf(" | ");
+    printf("B: ");      if(state.states.B)      printf(" ON"); else printf("OFF"); printf(" | ");
+    printf("UP: ");     if(state.states.North)  printf(" ON"); else printf("OFF"); printf(" | ");
+    printf("DOWN: ");   if(state.states.South)  printf(" ON"); else printf("OFF"); printf(" | ");
+    printf("LEFT: ");   if(state.states.West)   printf(" ON"); else printf("OFF"); printf(" | ");
+    printf("RIGHT: ");  if(state.states.East)   printf(" ON"); else printf("OFF"); printf(" | ");
+    printf("START: ");  if(state.states.Start)  printf(" ON"); else printf("OFF"); printf(" | ");
+    printf("SELECT: "); if(state.states.Select) printf(" ON"); else printf("OFF"); printf(" | ");
+    printf("SPI recv: 0x%X\r\n", SPI2->DR);
+  }
+  uint32_t lastTime = TIM5->CNT;
+}
+
 int main(void) {
+  enableDelayTimer();
   enableMidiTimer();
   initializeDebugUart(115200);
   initializeBusUart(9600);
   setupNesGamePad();
-  union NesGamePadStates_t state;
-
-  while(TRUE) {
-    state = getNesGamepadState();
-    if(state.code == 0xFF)
-      printf("Game pad is not plugged in\n\r");
-    else {
-      printf("A: ");      if(state.states.A)      printf(" ON"); else printf("OFF"); printf(" | ");
-      printf("B: ");      if(state.states.B)      printf(" ON"); else printf("OFF"); printf(" | ");
-      printf("UP: ");     if(state.states.North)  printf(" ON"); else printf("OFF"); printf(" | ");
-      printf("DOWN: ");   if(state.states.South)  printf(" ON"); else printf("OFF"); printf(" | ");
-      printf("LEFT: ");   if(state.states.West)   printf(" ON"); else printf("OFF"); printf(" | ");
-      printf("RIGHT: ");  if(state.states.East)   printf(" ON"); else printf("OFF"); printf(" | ");
-      printf("START: ");  if(state.states.Start)  printf(" ON"); else printf("OFF"); printf(" | ");
-      printf("SELECT: "); if(state.states.Select) printf(" ON"); else printf("OFF"); printf(" | ");
-      printf("SPI recv: 0x%X\r\n", SPI2->DR);
-    }
-    delayMs(100);
-  }
+  SSD1289_Init();
+  SSD1289_Clear(Black);
+  delayUs(100);
 
   // stop all drives
   for(int i = 0; i < 16; i++) {
@@ -1049,22 +1214,19 @@ int main(void) {
 
 //  debugMidiPlayer();
 
-  Delay(0x3FFFFF);
-  LCD_Init();
-  Delay(0x3FFFFF);
-  LCD_Clear(BLACK);
-  Delay(0x3FFFFF);
-
   UB_Rng_Init(); // Init the random number generator
   init_stars();
-  LCD_Clear(GREEN);
+  SSD1289_Clear(Green);
 
   char c = 0;
   printf("now listening on serial port...\n\r");
 
   // Main Loop
+  g_midiPlayer.pMidiFile = NULL;
+
+
   while(1) {
-	  drawFrame();
+	  drawMenu();
 
 	  /*
 	  if(_USART_getc(USART1, &c)) {

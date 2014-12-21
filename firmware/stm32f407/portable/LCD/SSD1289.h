@@ -1,203 +1,210 @@
-#ifndef __SSD1289_H
+/* -----------------------------------------------------------------------------
+
+SSD1289 based display driver
+
+Copyright (C) 2013  Fabio Angeletti - fabio.angeletti89@gmail.com
+
+Part of this code is an adaptation from souce code provided by
+		WaveShare - http://www.waveshare.net
+
+Part of this code is an adaptation from souce code provided by
+		Michael Margolis - https://code.google.com/p/glcd-arduino/
+
+I'm not the owner of the whole code
+
+------------------------------------------------------------------------------*/
+
+#ifndef __SSD1289_H 
 #define __SSD1289_H
 
+/* Includes ------------------------------------------------------------------*/
+#include <math.h>
 #include "stm32f4xx.h"
 #include "AsciiLib.h"
-#include "delay.h"
-
-typedef struct 
-{
-  int16_t X;
-  int16_t Y;
-} Point, * pPoint;   
-
-#define LCD_REG_0             0x00
-#define LCD_REG_1             0x01
-#define LCD_REG_2             0x02
-#define LCD_REG_3             0x03
-#define LCD_REG_4             0x04
-#define LCD_REG_5             0x05
-#define LCD_REG_6             0x06
-#define LCD_REG_7             0x07
-#define LCD_REG_8             0x08
-#define LCD_REG_9             0x09
-#define LCD_REG_10            0x0A
-#define LCD_REG_12            0x0C
-#define LCD_REG_13            0x0D
-#define LCD_REG_14            0x0E
-#define LCD_REG_15            0x0F
-#define LCD_REG_16            0x10
-#define LCD_REG_17            0x11
-#define LCD_REG_18            0x12
-#define LCD_REG_19            0x13
-#define LCD_REG_20            0x14
-#define LCD_REG_21            0x15
-#define LCD_REG_22            0x16
-#define LCD_REG_23            0x17
-#define LCD_REG_24            0x18
-#define LCD_REG_25            0x19
-#define LCD_REG_26            0x1A
-#define LCD_REG_27            0x1B
-#define LCD_REG_28            0x1C
-#define LCD_REG_29            0x1D
-#define LCD_REG_30            0x1E
-#define LCD_REG_31            0x1F
-#define LCD_REG_32            0x20
-#define LCD_REG_33            0x21
-#define LCD_REG_34            0x22
-#define LCD_REG_36            0x24
-#define LCD_REG_37            0x25
-#define LCD_REG_40            0x28
-#define LCD_REG_41            0x29
-#define LCD_REG_43            0x2B
-#define LCD_REG_45            0x2D
-#define LCD_REG_48            0x30
-#define LCD_REG_49            0x31
-#define LCD_REG_50            0x32
-#define LCD_REG_51            0x33
-#define LCD_REG_52            0x34
-#define LCD_REG_53            0x35
-#define LCD_REG_54            0x36
-#define LCD_REG_55            0x37
-#define LCD_REG_56            0x38
-#define LCD_REG_57            0x39
-#define LCD_REG_58            0x3A
-#define LCD_REG_59            0x3B
-#define LCD_REG_60            0x3C
-#define LCD_REG_61            0x3D
-#define LCD_REG_62            0x3E
-#define LCD_REG_63            0x3F
-#define LCD_REG_64            0x40
-#define LCD_REG_65            0x41
-#define LCD_REG_66            0x42
-#define LCD_REG_67            0x43
-#define LCD_REG_68            0x44
-#define LCD_REG_69            0x45
-#define LCD_REG_70            0x46
-#define LCD_REG_71            0x47
-#define LCD_REG_72            0x48
-#define LCD_REG_73            0x49
-#define LCD_REG_74            0x4A
-#define LCD_REG_75            0x4B
-#define LCD_REG_76            0x4C
-#define LCD_REG_77            0x4D
-#define LCD_REG_78            0x4E
-#define LCD_REG_79            0x4F
-#define LCD_REG_80            0x50
-#define LCD_REG_81            0x51
-#define LCD_REG_82            0x52
-#define LCD_REG_83            0x53
-#define LCD_REG_96            0x60
-#define LCD_REG_97            0x61
-#define LCD_REG_106           0x6A
-#define LCD_REG_118           0x76
-#define LCD_REG_128           0x80
-#define LCD_REG_129           0x81
-#define LCD_REG_130           0x82
-#define LCD_REG_131           0x83
-#define LCD_REG_132           0x84
-#define LCD_REG_133           0x85
-#define LCD_REG_134           0x86
-#define LCD_REG_135           0x87
-#define LCD_REG_136           0x88
-#define LCD_REG_137           0x89
-#define LCD_REG_139           0x8B
-#define LCD_REG_140           0x8C
-#define LCD_REG_141           0x8D
-#define LCD_REG_143           0x8F
-#define LCD_REG_144           0x90
-#define LCD_REG_145           0x91
-#define LCD_REG_146           0x92
-#define LCD_REG_147           0x93
-#define LCD_REG_148           0x94
-#define LCD_REG_149           0x95
-#define LCD_REG_150           0x96
-#define LCD_REG_151           0x97
-#define LCD_REG_152           0x98
-#define LCD_REG_153           0x99
-#define LCD_REG_154           0x9A
-#define LCD_REG_157           0x9D
-#define LCD_REG_192           0xC0
-#define LCD_REG_193           0xC1
-#define LCD_REG_229           0xE5
-
-#define LCD_COLOR_WHITE          0xFFFF
-#define LCD_COLOR_BLACK          0x0000
-#define LCD_COLOR_GREY           0xF7DE
-#define LCD_COLOR_BLUE           0x001F
-#define LCD_COLOR_BLUE2          0x051F
-#define LCD_COLOR_RED            0xF800
-#define LCD_COLOR_MAGENTA        0xF81F
-#define LCD_COLOR_GREEN          0x07E0
-#define LCD_COLOR_CYAN           0x7FFF
-#define LCD_COLOR_YELLOW         0xFFE0
-
-#define   BLACK        0x0000
-#define   NAVY         0x000F
-#define   DGREEN       0x03E0
-#define   DCYAN        0x03EF
-#define   MAROON       0x7800
-#define   PURPLE       0x780F
-#define   OLIVE        0x7BE0
-#define   GREY         0xF7DE
-#define   LGRAY        0xC618
-#define   DGRAY        0x7BEF
-#define   BLUE         0x001F
-#define   GREEN        0x07E0
-#define   CYAN         0x07FF
-#define   RED          0xF800
-#define   MAGENTA      0xF81F
-#define   YELLOW       0xFFE0
-#define   WHITE        0xFFFF
-
-#define LCD_DIR_HORIZONTAL       0x0000
-#define LCD_DIR_VERTICAL         0x0001
-
-#define LCD_PIXEL_HEIGHT          0x0140
-#define LCD_PIXEL_WIDTH         0x00F0
-
-#define ASSEMBLE_RGB(R ,G, B)    ((((R)& 0xF8) << 8) | (((G) & 0xFC) << 3) | (((B) & 0xF8) >> 3)) 
-
-void LCD_Init(void);
-void TIM_Config(void);
-void LCD_CtrlLinesConfig(void);
-void LCD_FSMCConfig(void);
-
-void PutPixel(int16_t x, int16_t y);
-
-void LCD_SetColors(__IO uint16_t _TextColor, __IO uint16_t _BackColor); 
-void LCD_GetColors(__IO uint16_t *_TextColor, __IO uint16_t *_BackColor);
-void LCD_SetTextColor(__IO uint16_t Color);
-void LCD_SetBackColor(__IO uint16_t Color);
-void LCD_Clear(uint16_t Color);
-void LCD_SetCursor(uint16_t Xpos, uint16_t Ypos);
-void LCD_CharSize(__IO uint16_t size);
-void Pixel(int16_t x, int16_t y,int16_t c);
-
-void LCD_PutChar(int16_t PosX, int16_t PosY, char c);
-void LCD_StringLine(uint16_t PosX, uint16_t PosY, uint8_t *str);
-void LCD_DrawLine(uint16_t Xpos, uint16_t Ypos, uint16_t Length, uint8_t Direction);
-void LCD_DrawRect(uint16_t Xpos, uint16_t Ypos, uint8_t Height, uint16_t Width);
-void LCD_DrawSquare(uint16_t Xpos, uint16_t Ypos, uint16_t a);
-void LCD_DrawCircle(uint16_t Xpos, uint16_t Ypos, uint16_t Radius);;
-void LCD_DrawUniLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
-void LCD_DrawFullRect(uint16_t Xpos, uint16_t Ypos, uint16_t Width, uint16_t Height);
-void LCD_DrawFullCircle(uint16_t Xpos, uint16_t Ypos, uint16_t Radius);
-void LCD_PolyLine(pPoint Points, uint16_t PointCount);
-void LCD_PolyLineRelative(pPoint Points, uint16_t PointCount);
-void LCD_ClosedPolyLine(pPoint Points, uint16_t PointCount);
-void LCD_ClosedPolyLineRelative(pPoint Points, uint16_t PointCount);
-void LCD_FillPolyLine(pPoint Points, uint16_t PointCount);
-void LCD_SetDisplayWindow(uint8_t Xpos, uint16_t Ypos, uint8_t Height, uint16_t Width);
-void LCD_WriteBMP(uint8_t Xpos, uint16_t Ypos, uint8_t Height, uint16_t Width, uint8_t *bitmap);
-void LCD_DrawFullSquare(uint16_t Xpos, uint16_t Ypos, uint16_t a);
 
 
-void LCD_WriteRAM_Prepare(void);
-void LCD_WriteRAM(uint16_t RGB_Code);
-void LCD_WriteReg(uint8_t LCD_Reg, uint16_t LCD_RegValue);
-void LCD_DisplayOn(void);
-void LCD_DisplayOff(void);
-void LCD_BackLight(int procentai);
+// coon extensions
+static enum {
+  OSCILLATION_START                   = 0x00,
+  DRIVER_OUTPUT                       = 0x01,
+  LCD_DRIVE_AC                        = 0x02, // LCD-Driving-Waveform Control
+  POWER_CONTROL_1                     = 0x03,
+  COMPARE_1                           = 0x05,
+  COMPARE_2                           = 0x06,
+  DISPLAY_CONTROL                     = 0x07,
+  FRAME_CYCLE_CONTROL                 = 0x0B,
+  POWER_CONTROL_2                     = 0x0C,
+  POWER_CONTROL_3                     = 0x0D,
+  POWER_CONTROL_4                     = 0x0E,
+  GATE_SCAN_START_POSITION            = 0x0F,
+  SLEEP_MODE                          = 0x10,
+  ENTRY_MODE                          = 0x11,
+  OPTIMIZE_ACCESS_SPEED_3             = 0x12,
+  GENERIC_INTERFACE_CONTROL           = 0x15,
+  HORIZONTAL_PORCH                    = 0x16,
+  VERTICAL_PORCH                      = 0x17,
+  POWER_CONTROL_5                     = 0x1E,
+  RAM_DATA_READ_WRITE                 = 0x22, // Write mode on R/W = 1, D/C = 1, Read mode on R/W = 0, D/C = 1
+  RAM_WRITE_DATA_MASK_1               = 0x23,
+  RAM_WRITE_DATA_MASK_2               = 0x24,
+  FRAME_FREQUENCY                     = 0x25,
+  VCOM_OTP28                          = 0x28, // VCOM_OTP is defined twice in datasheet. 28 Suffix means 'register 28'
+  OPTIMIZE_ACCESS_SPEED_1             = 0x28,
+  VCOM_OTP29                          = 0x29, // VCOM_OTP is defined twice in datasheet. 29 Suffix means 'register 29'
+  OPTIMIZE_ACCESS_SPEED_2             = 0x2F,
+  GAMMA_CONTROL_1                     = 0x30,
+  GAMMA_CONTROL_2                     = 0x31,
+  GAMMA_CONTROL_3                     = 0x32,
+  GAMMA_CONTROL_4                     = 0x33,
+  GAMMA_CONTROL_5                     = 0x34,
+  GAMMA_CONTROL_6                     = 0x35,
+  GAMMA_CONTROL_7                     = 0x36,
+  GAMMA_CONTROL_8                     = 0x37,
+  GAMMA_CONTROL_9                     = 0x3A,
+  GAMMA_CONTROL_10                    = 0x3B,
+  VERTICAL_SCROLL_CONTROL_1           = 0x41,
+  VERTICAL_SCROLL_CONTROL_2           = 0x42,
+  HORIZONTAL_RAM_ADDRESS_POSITION     = 0x44,
+  VERTICAL_RAM_ADDRESS_START_POSITION = 0x45,
+  VERTICAL_RAM_ADDRESS_END_POSITION   = 0x46,
+  FIRST_WINDOW_START                  = 0x48,
+  FIRST_WINDOW_END                    = 0x49,
+  SECOND_WINDOW_START                 = 0x4A,
+  SECOND_WINDOW_END                   = 0x4B,
+  SET_GDDRAM_X_ADDRESS_COUNTER        = 0x4E,
+  SET_GDDRAM_Y_ADDRESS_COUNTER        = 0x4F
+} ssd1289Registers;
+
+// end of coon extensions
+
+
+/* Private define ------------------------------------------------------------*/
+
+//#define DISP_HOR_RESOLUTION				320
+//#define DISP_VER_RESOLUTION				240
+
+//#define DISP_ORIENTATION					0
+#define DISP_ORIENTATION					90
+//#define DISP_ORIENTATION					180
+//#define DISP_ORIENTATION					270
+
+/* Private define ------------------------------------------------------------*/
+
+#if  ( DISP_ORIENTATION == 90 ) || ( DISP_ORIENTATION == 270 )
+
+#define  MAX_X  320
+#define  MAX_Y  240   
+
+#elif  ( DISP_ORIENTATION == 0 ) || ( DISP_ORIENTATION == 180 )
+
+#define  MAX_X  240
+#define  MAX_Y  320   
+
+#endif
+
+/* PORTs and PINs definitions ------------------------------------------------*/
+#define SSD1289_CTRL_PORT			GPIOD
+#define SSD1289_DATA_PORT			GPIOE
+#define SSD1289_BACKLIGHT_PORT		GPIOA
+
+#define SSD1289_CS_PIN				GPIO_Pin_14
+#define SSD1289_RS_PIN				GPIO_Pin_15
+#define SSD1289_nWR_PIN				GPIO_Pin_12
+#define SSD1289_nRD_PIN				GPIO_Pin_13
+#define SSD1289_RESET_PIN			GPIO_Pin_11
+#define SSD1289_BACKLIGHT_PIN		GPIO_Pin_0
+
+#define Set_Cs        			GPIO_SetBits(SSD1289_CTRL_PORT, SSD1289_CS_PIN)
+#define Clr_Cs        			GPIO_ResetBits(SSD1289_CTRL_PORT, SSD1289_CS_PIN)
+
+#define Set_Rs        			GPIO_SetBits(SSD1289_CTRL_PORT, SSD1289_RS_PIN)
+#define Clr_Rs        			GPIO_ResetBits(SSD1289_CTRL_PORT, SSD1289_RS_PIN)
+
+#define Set_nWr       			GPIO_SetBits(SSD1289_CTRL_PORT, SSD1289_nWR_PIN)
+#define Clr_nWr       			GPIO_ResetBits(SSD1289_CTRL_PORT, SSD1289_nWR_PIN)
+
+#define Set_nRd       			GPIO_SetBits(SSD1289_CTRL_PORT, SSD1289_nRD_PIN)
+#define Clr_nRd       			GPIO_ResetBits(SSD1289_CTRL_PORT, SSD1289_nRD_PIN)
+
+#define Set_Reset       		GPIO_SetBits(SSD1289_CTRL_PORT, SSD1289_RESET_PIN)
+#define Clr_Reset       		GPIO_ResetBits(SSD1289_CTRL_PORT, SSD1289_RESET_PIN)
+
+#define Set_Backlight       	GPIO_SetBits(SSD1289_BACKLIGHT_PORT, SSD1289_BACKLIGHT_PIN)
+#define Clr_Backlight       	GPIO_ResetBits(SSD1289_BACKLIGHT_PORT, SSD1289_BACKLIGHT_PIN)
+
+/* 16bit RGB565 colors */
+#define White          0xFFFF
+#define Black          0x0000
+#define Grey           0xF7DE
+#define Blue           0x001F
+#define Blue2          0x051F
+#define Red            0xF800
+#define Magenta        0xF81F
+#define Green          0x07E0
+#define Cyan           0x7FFF
+#define Yellow         0xFFE0
+
+	// macro to convert RGB color in 565RGB format
+#define RGB565CONVERT(red, green, blue) (int) (((red >> 3) << 11) | ((green >> 2) << 5) | (blue >> 3))
+
+/* Function prototypes -------------------------------------------------------*/
+	// controller initialization
+void 		SSD1289_Init(void);
+	// fills screen with chosen color
+void 		SSD1289_Clear(uint16_t Color);	
+
+	// return the color of requested point
+uint16_t 	SSD1289_GetPoint(uint16_t Xpos, uint16_t Ypos);
+	// places a point with selected color
+void 		SSD1289_SetPoint(uint16_t Xpos, uint16_t Ypos, uint16_t point);
+
+	// writes a character with background using default font
+void 		SSD1289_PutChar(uint16_t Xpos, uint16_t Ypos, uint8_t ASCI, uint16_t charColor, uint16_t bkColor);
+	// writes a character without background using default font
+void 		SSD1289_CleanPutChar( uint16_t Xpos, uint16_t Ypos, uint8_t ASCI, uint16_t charColor);
+	// writes a string with background using default font
+void 		SSD1289_Text(uint16_t Xpos, uint16_t Ypos, uint8_t *str, uint16_t Color, uint16_t bkColor);
+	// writes a string without background using default font
+void 		SSD1289_CleanText(uint16_t Xpos, uint16_t Ypos, uint8_t *str, uint16_t Color);
+
+	// draws a picture saved as 16bit array
+void 		SSD1289_DrawPicture(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint16_t *pic);
+	// draws a picture saved as 2x8bit array
+void 		SSD1289_DrawPicture8bit(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const uint8_t *pic);
+
+	// writes a character with background using selected font
+void 		SSD1289_PutCharFont(uint16_t Xpos, uint16_t Ypos, uint8_t ASCI, uint16_t charColor, uint16_t bkColor, uint16_t FONTx);
+	// writes a character without background using selected font
+void 		SSD1289_CleanPutCharFont( uint16_t Xpos, uint16_t Ypos, uint8_t ASCI, uint16_t charColor, uint16_t FONTx);
+	// writes a string with background using selected font
+void 		SSD1289_TextFont(uint16_t Xpos, uint16_t Ypos, uint8_t *str, uint16_t Color, uint16_t bkColor, uint16_t FONTx);
+	// writes a string without background using selected font
+void 		SSD1289_CleanTextFont(uint16_t Xpos, uint16_t Ypos, uint8_t *str, uint16_t Color, uint16_t FONTx);
+
+	// draws a line starting at x0,y0 and ending at x1,y1 with selected color
+void 		SSD1289_DrawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1 , uint16_t color );
+	// draws a circle with center x0,y0 radius r and selected color
+void 		SSD1289_DrawCircle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color);
+	// draws a filled circle with center x0,y0 radius r and selected color
+void 		SSD1289_FillCircle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color);
+	// draws a rectangle starting at x,y with width w and height h with selected color
+void 		SSD1289_DrawRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
+	// draws a filled rectangle starting at x,y with width w and height h with selected color
+void 		SSD1289_FillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t color);
+	// draws a triangle with coordinates x0,y0 x1,y1 x2,y2 with selected color
+void 		SSD1289_DrawTriangle(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
+	// draws a crosshair at Xpos,Ypos with 2 selected colors
+void 		SSD1289_DrawCross(uint16_t Xpos, uint16_t Ypos, uint16_t in_color, uint16_t out_color);
+	// backlight ON/OFF
+void		SSD1289_Backlight(uint32_t val);
+
+
+	// controller specific functions - should not be used outside
+__inline void SSD1289_WriteIndex(uint16_t index);
+__inline void SSD1289_WriteData(uint16_t data);
+__inline uint16_t SSD1289_ReadData(void);
+__inline uint16_t SSD1289_ReadReg(uint16_t SSD1289_Reg);
+__inline void SSD1289_WriteReg(uint16_t SSD1289_Reg,uint16_t SSD1289_RegValue);
+static void SSD1289_SetCursor( uint16_t Xpos, uint16_t Ypos );
 
 #endif 
