@@ -21,6 +21,12 @@ typedef struct {
   float timeScaleFactor;
 } MIDI_PLAYER;
 
+void stopAllDrives() {
+  for(int i = 0; i < 64; i++) {
+    playNote(i, 0);
+  }
+}
+
 static MIDI_PLAYER g_midiPlayer;
 
 void enableMidiTimer() {
@@ -256,6 +262,11 @@ void move_and_draw_stars() {
 }
 */
 
+BOOL midiPlayerCloseFile(MIDI_PLAYER* pMidiPlayer) {
+  midiFileClose(pMidiPlayer->pMidiFile);
+  pMidiPlayer->pMidiFile = NULL;
+}
+
 BOOL midiPlayerOpenFile(MIDI_PLAYER* pMidiPlayer, const char* pFileName) {
   pMidiPlayer->pMidiFile = midiFileOpen(pFileName);
   if (!pMidiPlayer->pMidiFile)
@@ -281,55 +292,67 @@ BOOL midiPlayerOpenFile(MIDI_PLAYER* pMidiPlayer, const char* pFileName) {
 }
 
 BOOL midiPlayerTick(MIDI_PLAYER* pMidiPlayer) {
-  if(pMidiPlayer->pMidiFile == NULL)
+  MIDI_PLAYER* pMp = pMidiPlayer;
+
+  if (pMp->pMidiFile == NULL)
     return FALSE;
 
-  if (fabs(pMidiPlayer->lastMsPerTick - pMidiPlayer->pMidiFile->msPerTick) > 0.001f) { // TODO: avoid floating point operation here!
+  if (fabs(pMp->lastMsPerTick - pMp->pMidiFile->msPerTick) > 0.001f) { // TODO: avoid floating point operation here!
     // On a tempo change we need to transform the old absolute time scale to the new scale.
-    pMidiPlayer->timeScaleFactor = pMidiPlayer->lastMsPerTick / pMidiPlayer->pMidiFile->msPerTick;
-    pMidiPlayer->lastTick *= pMidiPlayer->timeScaleFactor;
+    pMp->timeScaleFactor = pMp->lastMsPerTick / pMp->pMidiFile->msPerTick;
+    pMp->lastTick *= pMp->timeScaleFactor;
   }
+  pMp->lastMsPerTick = pMp->pMidiFile->msPerTick;
+  pMp->currentTick = (hal_clock() - pMp->startTime) / pMp->pMidiFile->msPerTick;
+  pMp->eventsNeedToBeFetched = TRUE;
 
-  pMidiPlayer->lastMsPerTick = pMidiPlayer->pMidiFile->msPerTick;
-  pMidiPlayer->currentTick = (hal_clock() - pMidiPlayer->startTime) / pMidiPlayer->pMidiFile->msPerTick;
-  pMidiPlayer->eventsNeedToBeFetched = TRUE;
-
-  int32_t start = TIM5->CNT; // DEBUG
-  while (pMidiPlayer->eventsNeedToBeFetched) { // This loop keeps all tracks synchronized in case of a lag
-    pMidiPlayer->eventsNeedToBeFetched = FALSE;
-    pMidiPlayer->allTracksAreFinished = TRUE;
-    pMidiPlayer->deltaTick = pMidiPlayer->currentTick - pMidiPlayer->lastTick;
-    if (pMidiPlayer->deltaTick < 0) {
-      printf("Warning: deltaTick is negative! Fast forward? deltaTick=%d", pMidiPlayer->deltaTick);
-      // TODO: correct time here!
-      pMidiPlayer->deltaTick = 0;
+  while (pMp->eventsNeedToBeFetched) { // This loop keeps all tracks synchronized in case of a lag
+    pMp->eventsNeedToBeFetched = FALSE;
+    pMp->allTracksAreFinished = TRUE;
+    pMp->deltaTick = pMp->currentTick - pMp->lastTick;
+    if (pMp->deltaTick < 0) {
+      hal_printfWarning("Warning: deltaTick is negative! Fast forward? deltaTick=%d", pMp->deltaTick);
+      // TODO: correct time here, to prevent skips on following tempo changes!
+      pMp->deltaTick = 0;
     }
 
-    for (int iTrack = 0; iTrack < midiReadGetNumTracks(pMidiPlayer->pMidiFile); iTrack++) {
-      pMidiPlayer->pMidiFile->Track[iTrack].deltaTime -= pMidiPlayer->deltaTick;
-      pMidiPlayer->trackIsFinished = pMidiPlayer->pMidiFile->Track[iTrack].ptrNew == pMidiPlayer->pMidiFile->Track[iTrack].pEndNew;
+    for (int iTrack = 0; iTrack < midiReadGetNumTracks(pMp->pMidiFile); iTrack++) {
+      pMp->pMidiFile->Track[iTrack].deltaTime -= pMp->deltaTick;
+      pMp->trackIsFinished = pMp->pMidiFile->Track[iTrack].ptrNew == pMp->pMidiFile->Track[iTrack].pEndNew;
 
-      if (!pMidiPlayer->trackIsFinished) {
-        if (pMidiPlayer->pMidiFile->Track[iTrack].deltaTime <= 0 && !pMidiPlayer->trackIsFinished) { // Is it time to play this event?
-          dispatchMidiMsg(pMidiPlayer->pMidiFile, iTrack, &pMidiPlayer->msg[iTrack]); // shoot
-          midiReadGetNextMessage(pMidiPlayer->pMidiFile, iTrack, &pMidiPlayer->msg[iTrack]); // reload
-          pMidiPlayer->pMidiFile->Track[iTrack].deltaTime += pMidiPlayer->msg[iTrack].dt;
+      if (!pMp->trackIsFinished) {
+        if (pMp->pMidiFile->Track[iTrack].deltaTime <= 0 && !pMp->trackIsFinished) { // Is it time to play this event?
+          dispatchMidiMsg(pMp->pMidiFile, iTrack, &pMp->msg[iTrack]); // shoot
+
+          // Debug 1/2
+          int32_t expectedWaitTime = pMp->pMidiFile->Track[iTrack].debugLastMsgDt * pMp->lastMsPerTick;
+          int32_t realWaitTime = hal_clock() - pMp->pMidiFile->Track[iTrack].debugLastClock;
+          int32_t diff = realWaitTime - expectedWaitTime;
+
+          if (abs(diff > 10) || TRUE)
+            hal_printfWarning("Expected: %d ms, real: %d ms, diff: %d ms\n\r",
+              expectedWaitTime, realWaitTime, diff);
+          // ---
+
+          midiReadGetNextMessage(pMp->pMidiFile, iTrack, &pMp->msg[iTrack]); // reload
+          pMp->pMidiFile->Track[iTrack].deltaTime += pMp->msg[iTrack].dt;
+
+          // Debug 2/2
+          pMp->pMidiFile->Track[iTrack].debugLastClock = hal_clock();
+          pMp->pMidiFile->Track[iTrack].debugLastMsgDt = pMp->msg[iTrack].dt;
+          // ---
         }
 
-        if (pMidiPlayer->pMidiFile->Track[iTrack].deltaTime <= 0 && !pMidiPlayer->trackIsFinished)
-          pMidiPlayer->eventsNeedToBeFetched = TRUE;
+        if (pMp->pMidiFile->Track[iTrack].deltaTime <= 0 && !pMp->trackIsFinished)
+          pMp->eventsNeedToBeFetched = TRUE;
 
-        pMidiPlayer->allTracksAreFinished = FALSE;
+        pMp->allTracksAreFinished = FALSE;
       }
-      pMidiPlayer->lastTick = pMidiPlayer->currentTick;
+      pMp->lastTick = pMp->currentTick;
     }
   }
 
-  uint32_t dispatchTime = (TIM5->CNT - start) / 1000;
-  if(dispatchTime > 0)
-    printf("Dispatch took: %d ms\n\r", dispatchTime);
-
-  return !pMidiPlayer->allTracksAreFinished; // TODO: close file
+  return !pMp->allTracksAreFinished; // TODO: close file
 }
 
 void drawCursor(uint32_t cursorPos) {
@@ -417,17 +440,24 @@ void drawMenu() {
     if(!midiPlayerTick(&g_midiPlayer)) {
       isPlaying = FALSE;
       firstStart = TRUE;
+      midiPlayerCloseFile(&g_midiPlayer);
+      stopAllDrives();
+
+      printf("Playback finished!\n\r");
     }
 
 
   isPlaying = midiPlayerTick(&g_midiPlayer);
-
   gamePad = getNesGamepadState();
 
   if((lastStateCode != gamePad.code && gamePad.code != 0x00) || firstStart) {
     SSD1289_Clear(Black);
+
     SSD1289_Text(X_OFFSET - 30, 0, "Use the game pad to select a song", White, Black);
-    SSD1289_Text(X_OFFSET + 10, 18, "Press A button to start", White, Black);
+    if(gamePad.code != 0xFF)
+      SSD1289_Text(X_OFFSET + 10, 18, "Press A button to start", White, Black);
+    else
+      SSD1289_Text(X_OFFSET + 5, 18, "Please plug in game pad!", Yellow, Black);
 
     if(gamePad.code == 0xFF) {
       //SSD1289_Text(X_OFFSET, Y_OFFSET, "Please plug in game pad", White, Black);
@@ -437,6 +467,7 @@ void drawMenu() {
     }
     else if(gamePad.states.A) {
       //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing A", White, Black);
+      isPlaying = TRUE;
       onMenuAction(cursorPos);
     }
     else if(gamePad.states.B) {
@@ -445,6 +476,7 @@ void drawMenu() {
     }
     else if(gamePad.states.Start) {
       //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing Start", White, Black);
+      isPlaying = TRUE;
       onMenuAction(cursorPos);
     }
     else if(gamePad.states.Select) {
@@ -468,14 +500,14 @@ void drawMenu() {
     else {
       //SSD1289_Text(X_OFFSET, Y_OFFSET, "You are pressing something else...", White, Black);
     }
+  }
 
+  if(!isPlaying) {
     // Draw midi files here
     static char trackName[256] = "";
     drawTracks(trackName);
     drawCursor(cursorPos);
   }
-
-
 
   lastStateCode = gamePad.code;
   firstStart = FALSE;
@@ -483,14 +515,14 @@ void drawMenu() {
 }
 
 void debugPrintln(char* text) {
-  printf("%s\r\n", text);
+  printf("%s\n\r", text);
 }
 
 
 // Menu
 // TODO: make much better! Prevent flickering etc!!!
 void onMenuBack() {
-  SSD1289_Clear(Red);
+  midiPlayerCloseFile(&g_midiPlayer);
 }
 
 void onMenuAction(uint32_t menuItem) {
@@ -521,8 +553,8 @@ void onMenuAction(uint32_t menuItem) {
           SSD1289_Clear(Black);
           static char infoText[256];
           sprintf(infoText, "Now playing: %s", fn);
-          SSD1289_Text(X_OFFSET - 30, 0, infoText, White, Black);
-          SSD1289_Text(X_OFFSET + 10, 18, "Press B or Select button to stop", White, Black);
+          SSD1289_Text(X_OFFSET - 30,  0, infoText, White, Black);
+          SSD1289_Text(X_OFFSET - 45, 18, "Press B or Select button to stop", White, Black);
           return;
         }
       }
@@ -829,7 +861,7 @@ void printTrackPrefix(uint32_t track, uint32_t tick, char* pEventName)  {
 char noteName[64]; // TOOD: refactor to const string array
 
 void onNoteOff(int32_t track, int32_t tick, int32_t channel, int32_t note) {
-  return;
+  //return;
 
   muGetNameFromNote(noteName, note);
   playNote(channel, 0);
@@ -840,7 +872,7 @@ void onNoteOff(int32_t track, int32_t tick, int32_t channel, int32_t note) {
 }
 
 void onNoteOn(int32_t track, int32_t tick, int32_t channel, int32_t note, int32_t velocity) {
-  return;
+  //return;
 
   muGetNameFromNote(noteName, note);
   if(velocity > 0)
@@ -1170,7 +1202,6 @@ void debugPrintNesGamePadState() {
     printf("SELECT: "); if(state.states.Select) printf(" ON"); else printf("OFF"); printf(" | ");
     printf("SPI recv: 0x%X\r\n", SPI2->DR);
   }
-  uint32_t lastTime = TIM5->CNT;
 }
 
 int main(void) {
@@ -1182,11 +1213,6 @@ int main(void) {
   SSD1289_Init();
   SSD1289_Clear(Black);
   delayUs(100);
-
-  // stop all drives
-  for(int i = 0; i < 16; i++) {
-    playNote(i, 0);
-  }
 
   debugPrintln("\n\r");
   debugPrintln("################################");
@@ -1206,11 +1232,11 @@ int main(void) {
     TM_FATFS_DriveSize(&total, &free);
 
     /* Total space */
-    printf("Total: %8u kB; %5u MB; %2u GB\r\n", total, total / 1024, total / 1048576);
-    printf("Free:  %8u kB; %5u MB; %2u GB\r\n", free, free / 1024, free / 1048576);
+    printf("Total: %8u kB; %5u MB; %2u GB\n\r", total, total / 1024, total / 1048576);
+    printf("Free:  %8u kB; %5u MB; %2u GB\n\r", free, free / 1024, free / 1048576);
   }
   else
-    printf("Failed! No SD-Card?\r\n");
+    printf("Failed! No SD-Card?\n\r");
 
 //  debugMidiPlayer();
 
@@ -1219,7 +1245,7 @@ int main(void) {
   SSD1289_Clear(Green);
 
   char c = 0;
-  printf("now listening on serial port...\n\r");
+  //printf("now listening on serial port...\n\r");
 
   // Main Loop
   g_midiPlayer.pMidiFile = NULL;

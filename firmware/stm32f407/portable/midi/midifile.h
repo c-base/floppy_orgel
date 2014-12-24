@@ -48,6 +48,9 @@ typedef int32_t	  BOOL;
 #define FALSE	0
 #endif
 
+// Cache
+#define PLAYBACK_CACHE_SIZE 10 * 1024 // 1024 byte cache
+
 // Embedded Constants
 #define META_EVENT_MAX_DATA_SIZE 128 // The meta event size must be at least 5 bytes long, to store: variable 4 byte length, 1 byte event id.
 
@@ -97,6 +100,9 @@ typedef struct 	{
   uint32_t iBlockSize;				/* max size of track */
   uint8_t iDefaultChannel;		/* use for write only */
   uint8_t last_status;				/* used for running status */
+
+  uint32_t debugLastClock;
+  uint32_t debugLastMsgDt;
 
 } MIDI_FILE_TRACK;
 
@@ -213,7 +219,7 @@ typedef struct {
 /*
 ** midiFile* Prototypes
 */
-int32_t readChunkFromFile(FIL* pFile, void* dst, int32_t startPos, size_t num);
+int32_t readChunkFromFile(FIL* pFile, uint8_t* dst, int32_t startPos, size_t num);
 int32_t readByteFromFile(FIL* pFile, uint8_t* dst, int32_t startPos);
 int32_t readWordFromFile(FIL* pFile, uint16_t* dst, int32_t startPos);
 int32_t readDwordFromFile(FIL* pFile, uint32_t* dst, int32_t startPos);

@@ -3,8 +3,10 @@
 // Based on the file library by Chan.                       //
 //////////////////////////////////////////////////////////////
 
+#include <stdarg.h>
 #include "stm32f4xx.h"
 #include "ff.h"
+
 
 
 // ---- Filesystem functions ----
@@ -44,7 +46,24 @@ char* strcat_s(char* pDst, int32_t szDst, char* pSrc) {
   return strcat(pDst,pSrc); // not secure, but works for now. :)
 }
 
+
+// print functions
+static char g_formattedText[512];
+
 int32_t sprintf_s(char* buffer, int32_t sizeOfBuffer, const char *format, ...) {
-  return sprintf(buffer, "TODO: implement sprintf()!"); // not secure, but works for now. :)
+  va_list args;
+  va_start(args, format);
+  int32_t result = vsnprintf(buffer, sizeOfBuffer, format, args);
+  va_end(args);
+
+  return result;
+}
+
+void hal_printfWarning(char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  vsnprintf(g_formattedText, sizeof(g_formattedText), format, args);
+  printf("*** Warning ***: %s", g_formattedText);
+  va_end(args);
 }
 
