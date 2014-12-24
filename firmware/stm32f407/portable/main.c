@@ -329,7 +329,7 @@ BOOL midiPlayerTick(MIDI_PLAYER* pMidiPlayer) {
           int32_t realWaitTime = hal_clock() - pMp->pMidiFile->Track[iTrack].debugLastClock;
           int32_t diff = realWaitTime - expectedWaitTime;
 
-          if (abs(diff > 10) || TRUE)
+          if (abs(diff > 10))
             hal_printfWarning("Expected: %d ms, real: %d ms, diff: %d ms\n\r",
               expectedWaitTime, realWaitTime, diff);
           // ---
@@ -861,7 +861,7 @@ void printTrackPrefix(uint32_t track, uint32_t tick, char* pEventName)  {
 char noteName[64]; // TOOD: refactor to const string array
 
 void onNoteOff(int32_t track, int32_t tick, int32_t channel, int32_t note) {
-  //return;
+  return;
 
   muGetNameFromNote(noteName, note);
   playNote(channel, 0);
@@ -872,7 +872,7 @@ void onNoteOff(int32_t track, int32_t tick, int32_t channel, int32_t note) {
 }
 
 void onNoteOn(int32_t track, int32_t tick, int32_t channel, int32_t note, int32_t velocity) {
-  //return;
+  return;
 
   muGetNameFromNote(noteName, note);
   if(velocity > 0)
@@ -1253,7 +1253,6 @@ int main(void) {
 
   while(1) {
 	  drawMenu();
-
 	  /*
 	  if(_USART_getc(USART1, &c)) {
 	    while (USART_GetFlagStatus(USART6, USART_FLAG_TXE) == RESET); // Wait until transmit finishes

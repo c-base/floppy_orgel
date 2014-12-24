@@ -162,6 +162,7 @@ MIDI_FILE  *midiFileOpen(const char *pFilename) {
   FIL* pFileNew = &pFile;
   uint32_t ptrNew;
   BOOL bValidFile = FALSE;
+  cacheInitialized = FALSE; // invalidate cache (somethings screws up timing, when invalidating cache here!)
 
   hal_fopen(&pFile, pFilename);
 	if (pFileNew) {
@@ -220,7 +221,6 @@ MIDI_FILE  *midiFileOpen(const char *pFilename) {
 
   setPlaybackTempo(&_midiFile, MIDI_BPM_DEFAULT);
   setPlaybackTempo(&_midiFile, MIDI_BPM_DEFAULT);
-  cacheInitialized = FALSE; // invalidate cache
 
   return (MIDI_FILE *)&_midiFile;  
 }
