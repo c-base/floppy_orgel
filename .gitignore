@@ -3,3 +3,10 @@
 /firmware/stm32f407/portable/Filesystem/fatfs/desktop.ini
 /firmware/stm32f407/portable/Filesystem/fatfs/drivers/desktop.ini
 /firmware/stm32f407/portable/Filesystem/fatfs/option/desktop.ini
+/firmware/stm32f407/portable/portable/Debug/obj/*.o
+/firmware/stm32f407/portable/portable/Debug/bin/*.elf
+/firmware/stm32f407/portable/portable/Debug/bin/*.bin
+/firmware/stm32f407/portable/portable/Debug/bin/*.hex
+/firmware/stm32f407/portable/portable/Debug/bin/*.xml
+/firmware/stm32f407/portable/portable/Debug/obj/*.xml
+/firmware/stm32f407/portable/portable/Debug/bin/*.map

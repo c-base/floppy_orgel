@@ -436,7 +436,7 @@ void drawMenu() {
   static uint32_t maxCursorPos = 0;
   static BOOL isPlaying = FALSE;
 
-  if(isPlaying)
+  if(isPlaying) {
     if(!midiPlayerTick(&g_midiPlayer)) {
       isPlaying = FALSE;
       firstStart = TRUE;
@@ -445,7 +445,7 @@ void drawMenu() {
 
       printf("Playback finished!\n\r");
     }
-
+  }
 
   isPlaying = midiPlayerTick(&g_midiPlayer);
   gamePad = getNesGamepadState();
@@ -861,25 +861,23 @@ void printTrackPrefix(uint32_t track, uint32_t tick, char* pEventName)  {
 char noteName[64]; // TOOD: refactor to const string array
 
 void onNoteOff(int32_t track, int32_t tick, int32_t channel, int32_t note) {
-  return;
-
-  muGetNameFromNote(noteName, note);
   playNote(channel, 0);
 
+  return;
+  muGetNameFromNote(noteName, note);
   printTrackPrefix(track, tick, "Note Off");
   printf("(%d) %s", channel, noteName);
   printf("\n\r");
 }
 
 void onNoteOn(int32_t track, int32_t tick, int32_t channel, int32_t note, int32_t velocity) {
-  return;
-
-  muGetNameFromNote(noteName, note);
   if(velocity > 0)
     playNote(channel, note);
   else
     playNote(channel, 0);
 
+  return;
+  muGetNameFromNote(noteName, note);
   printTrackPrefix(track, tick, "Note On");
   printf("(%d) %s [%d] %d", channel, noteName, note, velocity);
   printf("\n\r");
@@ -1207,7 +1205,7 @@ void debugPrintNesGamePadState() {
 int main(void) {
   enableDelayTimer();
   enableMidiTimer();
-  initializeDebugUart(115200);
+  initializeDebugUart(9600);
   initializeBusUart(9600);
   setupNesGamePad();
   SSD1289_Init();
@@ -1250,15 +1248,17 @@ int main(void) {
   // Main Loop
   g_midiPlayer.pMidiFile = NULL;
 
+goto skip;
+  while(1) {
+    if(_USART_getc(USART1, &c)) {
+      while (USART_GetFlagStatus(USART6, USART_FLAG_TXE) == RESET); // Wait until transmit finishes
+        USART_SendData(USART6, c);
+    }
+  }
+skip:
 
   while(1) {
 	  drawMenu();
-	  /*
-	  if(_USART_getc(USART1, &c)) {
-	    while (USART_GetFlagStatus(USART6, USART_FLAG_TXE) == RESET); // Wait until transmit finishes
-	      USART_SendData(USART6, c);
-	  }
-	  */
   }
 }
 
