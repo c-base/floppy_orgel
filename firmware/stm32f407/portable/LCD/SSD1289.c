@@ -225,13 +225,14 @@ void SSD1289_Init(void)
 {
 	SSD1289_Configuration();
 
-	SSD1289_WriteReg(OSCILLATION_START,                   0x0001);  /* Enable SSD1289 Oscillator */
+	/*
+	SSD1289_WriteReg(OSCILLATION_START,                   0x0001);  // Enable SSD1289 Oscillator
 	SSD1289_WriteReg(POWER_CONTROL_1,                     0xA8A4);
 	SSD1289_WriteReg(POWER_CONTROL_2,                     0x0000);
 	SSD1289_WriteReg(POWER_CONTROL_3,                     0x080C);
 	SSD1289_WriteReg(POWER_CONTROL_4,                     0x2B00);
 	SSD1289_WriteReg(POWER_CONTROL_5,                     0x00B0);
-	SSD1289_WriteReg(DRIVER_OUTPUT,                       0x2B3F);  /* 320*240 0x2B3F */
+	SSD1289_WriteReg(DRIVER_OUTPUT,                       0x2B3F);  // 320*240 0x2B3F
 	SSD1289_WriteReg(LCD_DRIVE_AC,                        0x0600);
 	SSD1289_WriteReg(SLEEP_MODE,                          0x0000);
 	SSD1289_WriteReg(ENTRY_MODE,                          0x6070);
@@ -267,10 +268,205 @@ void SSD1289_Init(void)
 	SSD1289_WriteReg(SET_GDDRAM_X_ADDRESS_COUNTER,        0x0000);
 	SSD1289_WriteReg(SET_GDDRAM_Y_ADDRESS_COUNTER,        0x0000);
 
+
 	// Does not have any effect!?
-	SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_1,             0x0006);
+	SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_1,             0x0006); // or 0xA???
   SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_2,             0x12BE);
   SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_3,             0x6CEB);
+  */
+
+	RegSSD1289_OSCILLATION_START_t                   oscillation_start;
+  RegSSD1289_DRIVER_OUTPUT_t                       driver_output;
+  RegSSD1289_LCD_DRIVE_AC_t                        lcd_drive_ac;
+  RegSSD1289_POWER_CONTROL_1_t                     power_control_1;
+  RegSSD1289_COMPARE_1_t                           compare_1;
+  RegSSD1289_COMPARE_2_t                           compare_2;
+  RegSSD1289_DISPLAY_CONTROL_t                     display_control;
+  RegSSD1289_FRAME_CYCLE_CONTROL_t                 frame_cycle_control;
+  RegSSD1289_POWER_CONTROL_2_t                     power_control_2;
+  RegSSD1289_POWER_CONTROL_3_t                     power_control_3;
+  RegSSD1289_POWER_CONTROL_4_t                     power_control_4;
+  RegSSD1289_GATE_SCAN_START_POSITION_t            gate_scan_start_position;
+  RegSSD1289_SLEEP_MODE_t                          sleep_mode;
+  RegSSD1289_ENTRY_MODE_t                          entry_mode;
+  RegSSD1289_OPTIMIZE_ACCESS_SPEED_3_t             optimize_access_speed_3;
+  RegSSD1289_GENERIC_INTERFACE_CONTROL_t           generic_interface_control;
+  RegSSD1289_HORIZONTAL_PORCH_t                    horizontal_porch;
+  RegSSD1289_VERTICAL_PORCH_t                      vertical_porch;
+  RegSSD1289_POWER_CONTROL_5_t                     power_control_5;
+  RegSSD1289_RAM_DATA_READ_WRITE_t                 ram_data_read_write;
+  RegSSD1289_RAM_WRITE_DATA_MASK_1_t               ram_write_data_mask_1;
+  RegSSD1289_RAM_WRITE_DATA_MASK_2_t               ram_write_data_mask_2;
+  RegSSD1289_FRAME_FREQUENCY_t                     frame_frequency;
+  RegSSD1289_VCOM_OTP28_t                          vcom_otp28;
+  RegSSD1289_OPTIMIZE_ACCESS_SPEED_1_t             optimize_access_speed_1;
+  RegSSD1289_VCOM_OTP29_t                          vcom_otp29;
+  RegSSD1289_OPTIMIZE_ACCESS_SPEED_2_t             optimize_access_speed_2;
+  RegSSD1289_GAMMA_CONTROL_1_t                     gamma_control_1;
+  RegSSD1289_GAMMA_CONTROL_2_t                     gamma_control_2;
+  RegSSD1289_GAMMA_CONTROL_3_t                     gamma_control_3;
+  RegSSD1289_GAMMA_CONTROL_4_t                     gamma_control_4;
+  RegSSD1289_GAMMA_CONTROL_5_t                     gamma_control_5;
+  RegSSD1289_GAMMA_CONTROL_6_t                     gamma_control_6;
+  RegSSD1289_GAMMA_CONTROL_7_t                     gamma_control_7;
+  RegSSD1289_GAMMA_CONTROL_8_t                     gamma_control_8;
+  RegSSD1289_GAMMA_CONTROL_9_t                     gamma_control_9;
+  RegSSD1289_GAMMA_CONTROL_10_t                    gamma_control_10;
+  RegSSD1289_VERTICAL_SCROLL_CONTROL_1_t           vertical_scroll_control_1;
+  RegSSD1289_VERTICAL_SCROLL_CONTROL_2_t           vertical_scroll_control_2;
+  RegSSD1289_HORIZONTAL_RAM_ADDRESS_POSITION_t     horizontal_ram_address_position;
+  RegSSD1289_VERTICAL_RAM_ADDRESS_START_POSITION_t vertical_ram_address_start_position;
+  RegSSD1289_VERTICAL_RAM_ADDRESS_END_POSITION_t   vertical_ram_address_end_position;
+  RegSSD1289_FIRST_WINDOW_START_t                  first_window_start;
+  RegSSD1289_FIRST_WINDOW_END_t                    first_window_end;
+  RegSSD1289_SECOND_WINDOW_START_t                 second_window_start;
+  RegSSD1289_SECOND_WINDOW_END_t                   second_window_end;
+  RegSSD1289_SET_GDDRAM_X_ADDRESS_COUNTER_t        set_gddram_x_address_counter;
+  RegSSD1289_SET_GDDRAM_Y_ADDRESS_COUNTER_t        set_gddram_y_address_counter;
+
+	oscillation_start.OSCEN = 1;
+  power_control_1.AP = 2;
+  power_control_1.DC = 10;
+  power_control_1.BT = 4;
+  power_control_1.DCT = 10;
+  power_control_2.VRC0 = 0;
+  power_control_3.VRH = 12;
+  power_control_4.VDV = 11;
+  power_control_4.VCOMG = 1;
+  power_control_5.VCM = 48;
+  power_control_5.nOTP = 1;
+  driver_output.MUX = 319;
+  driver_output.TB = 1;
+  driver_output.SM = 0;
+  driver_output.BGR = 1;
+  driver_output.CAD = 0;
+  driver_output.REV = 1;
+  driver_output.RL = 0;
+  lcd_drive_ac.NW = 0;
+  lcd_drive_ac.WSMD = 0;
+  lcd_drive_ac.EOR = 1;
+  lcd_drive_ac.BC = 1;
+  lcd_drive_ac.ENWS = 0;
+  lcd_drive_ac.FLD = 0;
+  sleep_mode.SLP = 0;
+  entry_mode.LG = 0;
+  entry_mode.AM = 0;
+  entry_mode.ID = 3;
+  entry_mode.TY = 1;
+  entry_mode.DMode = 0;
+  entry_mode.WMode = 0;
+  entry_mode.OEDef = 0;
+  entry_mode.TRANS = 0;
+  entry_mode.DFM = 3;
+  entry_mode.VSmode = 0;
+  compare_1.CPG = 0;
+  compare_1.CPR = 0;
+  compare_2.CPB = 0;
+  horizontal_porch.HBP = 28;
+  horizontal_porch.XL = 239;
+  vertical_porch.VBP = 3;
+  vertical_porch.VFP = 0;
+  display_control.D = 3;
+  display_control.CM = 0;
+  display_control.DTE = 1;
+  display_control.GON = 1;
+  display_control.SPT = 1;
+  display_control.VLE = 0;
+  display_control.PT = 0;
+  frame_cycle_control.DIV = 0;
+  frame_cycle_control.EQ = 0;
+  frame_cycle_control.NO = 0;
+  frame_cycle_control.RTN = 0;
+  frame_cycle_control.SDIV = 0;
+  frame_cycle_control.SDT = 0;
+  frame_cycle_control.SRTN = 0;
+  gate_scan_start_position.SCN = 0;
+  vertical_scroll_control_1.VL10_18 = 0;
+  vertical_scroll_control_2.VL20_28 = 0;
+  first_window_start.SS10_18 = 0;
+  first_window_end.SE10_18 = 319;
+  second_window_start.SS20_28 = 0;
+  second_window_end.SE20_28 = 0;
+  horizontal_ram_address_position.HSA = 0;
+  horizontal_ram_address_position.HEA = 239;
+  vertical_ram_address_start_position.VSA = 0;
+  vertical_ram_address_end_position.VEA = 319;
+  gamma_control_1.PKP0_2 = 7;
+  gamma_control_1.PKP10_12 = 7;
+  gamma_control_2.PKP20_22 = 4;
+  gamma_control_2.PKP30_32 = 2;
+  gamma_control_3.PKP40_42 = 4;
+  gamma_control_3.PKP50_52 = 2;
+  gamma_control_4.PRP0_2 = 2;
+  gamma_control_4.PRP10_12 = 5;
+  gamma_control_5.PKN0_2 = 7;
+  gamma_control_5.PKN10_12 = 5;
+  gamma_control_6.PKN20_22 = 4;
+  gamma_control_6.PKN30_32 = 2;
+  gamma_control_7.PKN40_42 = 4;
+  gamma_control_7.PKN50_52 = 2;
+  gamma_control_8.PRN0_2 = 2;
+  gamma_control_8.PRN10_12 = 5;
+  gamma_control_9.VRP0_3 = 2;
+  gamma_control_9.VRP10_14 = 3;
+  gamma_control_10.VRN0_3 = 2;
+  gamma_control_10.VRN10_14 = 3;
+  ram_write_data_mask_1.WMG = 0;
+  ram_write_data_mask_1.WMR = 0;
+  ram_write_data_mask_2.WMB = 0;
+  frame_frequency.OSC = 8;
+  set_gddram_x_address_counter.XAD = 0;
+  set_gddram_y_address_counter.YAD = 0;
+  optimize_access_speed_1.setThisVariableTo_0x06 = 0x10; // 0x06 0r 0x10?
+  optimize_access_speed_2.setThisVariableTo_0x12BE = 0x12BE;
+  optimize_access_speed_3.setThisVariableTo_0x16CEB = 0x16CEB;
+
+  SSD1289_WriteReg(OSCILLATION_START,                   *(uint16_t*)&oscillation_start);  // Enable SSD1289 Oscillator
+  SSD1289_WriteReg(POWER_CONTROL_1,                     *(uint16_t*)&power_control_1);
+  SSD1289_WriteReg(POWER_CONTROL_2,                     *(uint16_t*)&power_control_2);
+  SSD1289_WriteReg(POWER_CONTROL_3,                     *(uint16_t*)&power_control_3);
+  SSD1289_WriteReg(POWER_CONTROL_4,                     *(uint16_t*)&power_control_4);
+  SSD1289_WriteReg(POWER_CONTROL_5,                     *(uint16_t*)&power_control_5);
+  SSD1289_WriteReg(DRIVER_OUTPUT,                       *(uint16_t*)&driver_output);  // 320*240 0x2B3F
+  SSD1289_WriteReg(LCD_DRIVE_AC,                        *(uint16_t*)&lcd_drive_ac);
+  SSD1289_WriteReg(SLEEP_MODE,                          *(uint16_t*)&sleep_mode);
+  SSD1289_WriteReg(ENTRY_MODE,                          *(uint16_t*)&entry_mode);
+  SSD1289_WriteReg(COMPARE_1,                           *(uint16_t*)&compare_1);
+  SSD1289_WriteReg(COMPARE_2,                           *(uint16_t*)&compare_2);
+  SSD1289_WriteReg(HORIZONTAL_PORCH,                    *(uint16_t*)&horizontal_porch);
+  SSD1289_WriteReg(VERTICAL_PORCH,                      *(uint16_t*)&vertical_porch);
+  SSD1289_WriteReg(DISPLAY_CONTROL,                     *(uint16_t*)&display_control);
+  SSD1289_WriteReg(FRAME_CYCLE_CONTROL,                 *(uint16_t*)&frame_cycle_control);
+  SSD1289_WriteReg(GATE_SCAN_START_POSITION,            *(uint16_t*)&gate_scan_start_position);
+  SSD1289_WriteReg(VERTICAL_SCROLL_CONTROL_1,           *(uint16_t*)&vertical_scroll_control_1);
+  SSD1289_WriteReg(VERTICAL_SCROLL_CONTROL_2,           *(uint16_t*)&vertical_scroll_control_2);
+  SSD1289_WriteReg(FIRST_WINDOW_START,                  *(uint16_t*)&first_window_start);
+  SSD1289_WriteReg(FIRST_WINDOW_END,                    *(uint16_t*)&first_window_end);
+  SSD1289_WriteReg(SECOND_WINDOW_START,                 *(uint16_t*)&second_window_start);
+  SSD1289_WriteReg(SECOND_WINDOW_END,                   *(uint16_t*)&second_window_end);
+  SSD1289_WriteReg(HORIZONTAL_RAM_ADDRESS_POSITION,     *(uint16_t*)&horizontal_ram_address_position);
+  SSD1289_WriteReg(VERTICAL_RAM_ADDRESS_START_POSITION, *(uint16_t*)&vertical_ram_address_start_position);
+  SSD1289_WriteReg(VERTICAL_RAM_ADDRESS_END_POSITION,   *(uint16_t*)&vertical_ram_address_end_position);
+  SSD1289_WriteReg(GAMMA_CONTROL_1,                     *(uint16_t*)&gamma_control_1);
+  SSD1289_WriteReg(GAMMA_CONTROL_2,                     *(uint16_t*)&gamma_control_2);
+  SSD1289_WriteReg(GAMMA_CONTROL_3,                     *(uint16_t*)&gamma_control_3);
+  SSD1289_WriteReg(GAMMA_CONTROL_4,                     *(uint16_t*)&gamma_control_4);
+  SSD1289_WriteReg(GAMMA_CONTROL_5,                     *(uint16_t*)&gamma_control_5);
+  SSD1289_WriteReg(GAMMA_CONTROL_6,                     *(uint16_t*)&gamma_control_6);
+  SSD1289_WriteReg(GAMMA_CONTROL_7,                     *(uint16_t*)&gamma_control_7);
+  SSD1289_WriteReg(GAMMA_CONTROL_8,                     *(uint16_t*)&gamma_control_8);
+  SSD1289_WriteReg(GAMMA_CONTROL_9,                     *(uint16_t*)&gamma_control_9);
+  SSD1289_WriteReg(GAMMA_CONTROL_10,                    *(uint16_t*)&gamma_control_10);
+  SSD1289_WriteReg(RAM_WRITE_DATA_MASK_1,               *(uint16_t*)&ram_write_data_mask_1);
+  SSD1289_WriteReg(RAM_WRITE_DATA_MASK_2,               *(uint16_t*)&ram_write_data_mask_2);
+  SSD1289_WriteReg(FRAME_FREQUENCY,                     *(uint16_t*)&frame_frequency);
+  SSD1289_WriteReg(SET_GDDRAM_X_ADDRESS_COUNTER,        *(uint16_t*)&set_gddram_x_address_counter);
+  SSD1289_WriteReg(SET_GDDRAM_Y_ADDRESS_COUNTER,        *(uint16_t*)&set_gddram_y_address_counter);
+
+  // Does not have any effect!?
+  SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_1,             *(uint16_t*)&optimize_access_speed_1); // or 0xA???
+  SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_2,             *(uint16_t*)&optimize_access_speed_2);
+  SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_3,             *(uint16_t*)&optimize_access_speed_3);
 
   SSD1289_Clear(Black);
 }

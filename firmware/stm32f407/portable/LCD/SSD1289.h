@@ -76,13 +76,12 @@ static enum {
   SET_GDDRAM_Y_ADDRESS_COUNTER        = 0x4F
 } ssd1289Registers;
 
-
-struct {
+typedef struct {
   uint16_t
   OSCEN : 1;
 } RegSSD1289_OSCILLATION_START_t;
 
-struct {
+typedef struct {
   uint16_t
   MUX : 9,
   TB  : 1,
@@ -93,7 +92,7 @@ struct {
   RL  : 1;
 } RegSSD1289_DRIVER_OUTPUT_t;
 
-struct {
+typedef struct {
   uint16_t
   NW   : 8,
   WSMD : 1,
@@ -103,7 +102,7 @@ struct {
   FLD  : 1;
 } RegSSD1289_LCD_DRIVE_AC_t;
 
-struct {
+typedef struct {
   uint16_t
       : 1,
   AP  : 3,
@@ -113,7 +112,7 @@ struct {
   DCT : 4;
 } RegSSD1289_POWER_CONTROL_1_t;
 
-struct {
+typedef struct {
   uint16_t
       : 2,
   CPG : 6,
@@ -121,13 +120,13 @@ struct {
   CPR : 6;
 } RegSSD1289_COMPARE_1_t;
 
-struct {
+typedef struct {
   uint16_t
       : 2,
   CPB : 6;
 } RegSSD1289_COMPARE_2_t;
 
-struct {
+typedef struct {
   uint16_t
   D   : 2,
       : 1,
@@ -140,7 +139,7 @@ struct {
   PT  : 2;
 } RegSSD1289_DISPLAY_CONTROL_t;
 
-struct {
+typedef struct {
   uint16_t
   RTN  : 4,
   SRTN : 1,
@@ -152,34 +151,34 @@ struct {
   NO   : 2;
 } RegSSD1289_FRAME_CYCLE_CONTROL_t;
 
-struct {
+typedef struct {
   uint16_t
   VRC0 : 3;
 } RegSSD1289_POWER_CONTROL_2_t;
 
-struct {
+typedef struct {
   uint16_t
   VRH : 4;
 } RegSSD1289_POWER_CONTROL_3_t;
 
-struct {
+typedef struct {
   uint16_t
         : 8,
   VDV   : 5,
   VCOMG : 1;
 } RegSSD1289_POWER_CONTROL_4_t;
 
-struct {
+typedef struct {
   uint16_t
   SCN : 9;
 } RegSSD1289_GATE_SCAN_START_POSITION_t;
 
-struct {
+typedef struct {
   uint16_t
   SLP : 1;
 } RegSSD1289_SLEEP_MODE_t;
 
-struct {
+typedef struct {
   uint16_t
   LG     : 3,
   AM     : 1,
@@ -193,12 +192,12 @@ struct {
   VSmode : 1;
 } RegSSD1289_ENTRY_MODE_t;
 
-struct {
+typedef struct {
   uint16_t
   setThisVariableTo_0x16CEB;
 } RegSSD1289_OPTIMIZE_ACCESS_SPEED_3_t;
 
-struct {
+typedef struct {
   uint16_t
   INVVS : 1,
   INNVHS : 1,
@@ -206,31 +205,31 @@ struct {
   INVDOT : 1;
 } RegSSD1289_GENERIC_INTERFACE_CONTROL_t;
 
-struct {
+typedef struct {
   uint16_t
   HBP : 8,
   XL  : 8;
 } RegSSD1289_HORIZONTAL_PORCH_t;
 
-struct {
+typedef struct {
   uint16_t
   VBP : 8,
   VFP : 8;
 } RegSSD1289_VERTICAL_PORCH_t;
 
-struct {
+typedef struct {
   uint16_t
   VCM  : 6,
        : 1,
   nOTP : 1;
 } RegSSD1289_POWER_CONTROL_5_t;
 
-struct {
+typedef struct {
   uint16_t
   Data : 16;
 } RegSSD1289_RAM_DATA_READ_WRITE_t;
 
-struct {
+typedef struct {
   uint16_t
       : 2,
   WMG : 6,
@@ -238,165 +237,165 @@ struct {
   WMR : 6;
 } RegSSD1289_RAM_WRITE_DATA_MASK_1_t;
 
-struct {
+typedef struct {
   uint16_t
       : 2,
-  WMB : 6
-  ;
+  WMB : 6;
 } RegSSD1289_RAM_WRITE_DATA_MASK_2_t;
 
-struct {
+typedef struct {
   uint16_t
       : 12,
   OSC : 4;
 } RegSSD1289_FRAME_FREQUENCY_t;
 
-struct {
+typedef struct {
   uint16_t
   setThisVariableTo_0x6; // or 10 ????
 } RegSSD1289_VCOM_OTP28_t;
 
-struct {
+typedef struct {
   uint16_t
   setThisVariableTo_0x06;
 } RegSSD1289_OPTIMIZE_ACCESS_SPEED_1_t;
 
-struct {
+typedef struct {
   uint16_t
   setThisVariableTo_0x80C0;
 } RegSSD1289_VCOM_OTP29_t;
 
-struct {
+typedef struct {
   uint16_t
   setThisVariableTo_0x12BE;
 } RegSSD1289_OPTIMIZE_ACCESS_SPEED_2_t;
 
-struct {
+typedef struct {
   uint16_t
   PKP0_2   : 3,
            : 5,
   PKP10_12 : 3;
 } RegSSD1289_GAMMA_CONTROL_1_t;
 
-struct {
+typedef struct {
   uint16_t
   PKP20_22 : 3,
            : 5,
   PKP30_32 : 3;
 } RegSSD1289_GAMMA_CONTROL_2_t;
 
-struct {
+typedef struct {
   uint16_t
   PKP40_42 : 3,
            : 5,
   PKP50_52 : 3;
 } RegSSD1289_GAMMA_CONTROL_3_t;
 
-struct {
+typedef struct {
   uint16_t
   PRP0_2   : 3,
            : 5,
   PRP10_12 : 3;
 } RegSSD1289_GAMMA_CONTROL_4_t;
 
-struct {
+typedef struct {
   uint16_t
   PKN0_2   : 3,
            : 5,
   PKN10_12 : 3;
 } RegSSD1289_GAMMA_CONTROL_5_t;
 
-struct {
+typedef struct {
   uint16_t
   PKN20_22 : 3,
            : 5,
   PKN30_32 : 3;
 } RegSSD1289_GAMMA_CONTROL_6_t;
 
-struct {
+typedef struct {
   uint16_t
   PKN40_42 : 3,
            : 5,
   PKN50_52 : 3;
 } RegSSD1289_GAMMA_CONTROL_7_t;
 
-struct {
+typedef struct {
   uint16_t
   PRN0_2   : 3,
            : 5,
   PRN10_12 : 3;
 } RegSSD1289_GAMMA_CONTROL_8_t;
 
-struct {
-  uint_16_t
+typedef struct {
+  uint16_t
   VRP0_3   : 4,
            : 4,
   VRP10_14 : 4;
 } RegSSD1289_GAMMA_CONTROL_9_t;
 
-struct {
-  uint_16_t
+typedef struct {
+  uint16_t
   VRN0_3   : 4,
            : 4,
   VRN10_14 : 4;
 } RegSSD1289_GAMMA_CONTROL_10_t;
 
-struct {
+typedef struct {
   uint16_t
   VL10_18;
 } RegSSD1289_VERTICAL_SCROLL_CONTROL_1_t;
 
-struct {
+typedef struct {
   uint16_t
   VL20_28;
 } RegSSD1289_VERTICAL_SCROLL_CONTROL_2_t;
 
-struct {
+typedef struct {
   uint16_t
-  HSA : 8;
+  HSA : 8,
   HEA : 8;
 } RegSSD1289_HORIZONTAL_RAM_ADDRESS_POSITION_t;
 
-struct {
+typedef struct {
   uint16_t
   VSA : 9;
 } RegSSD1289_VERTICAL_RAM_ADDRESS_START_POSITION_t;
 
-struct {
+typedef struct {
   uint16_t
   VEA : 9;
 } RegSSD1289_VERTICAL_RAM_ADDRESS_END_POSITION_t;
 
-struct {
+typedef struct {
   uint16_t
   SS10_18 : 9;
 } RegSSD1289_FIRST_WINDOW_START_t;
 
-struct {
+typedef struct {
   uint16_t
   SE10_18 : 9;
 } RegSSD1289_FIRST_WINDOW_END_t;
 
-struct {
+typedef struct {
   uint16_t
   SS20_28 : 9;
 } RegSSD1289_SECOND_WINDOW_START_t;
 
-struct {
+typedef struct {
   uint16_t
   SE20_28 : 9;
 } RegSSD1289_SECOND_WINDOW_END_t;
 
-struct {
+typedef struct {
   uint16_t
   XAD : 8;
 } RegSSD1289_SET_GDDRAM_X_ADDRESS_COUNTER_t;
 
-struct {
-  uint16_t;
+typedef struct {
+  uint16_t
   YAD : 9;
 } RegSSD1289_SET_GDDRAM_Y_ADDRESS_COUNTER_t;
 // end of coon extensions
+
 
 
 /* Private define ------------------------------------------------------------*/
