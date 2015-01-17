@@ -19,8 +19,7 @@ I'm not the owner of the whole code
 #include "SSD1289.h"
 
 
-void LCD_CtrlLinesConfig(void)
-{
+void LCD_CtrlLinesConfig(void) {
   GPIO_InitTypeDef GPIO_InitStructure;
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD | RCC_AHB1Periph_GPIOG |
                RCC_AHB1Periph_GPIOE | RCC_AHB1Periph_GPIOF,
@@ -69,12 +68,9 @@ void LCD_CtrlLinesConfig(void)
   GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
 
   GPIO_Init(GPIOE, &GPIO_InitStructure);
-
 }
 
-
-void LCD_FSMCConfig(void)
-{
+void LCD_FSMCConfig(void) {
   FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
   FSMC_NORSRAMTimingInitTypeDef FSMC_NORSRAMTimingInitStructure;
   FSMC_NORSRAMTimingInitStructure.FSMC_AddressSetupTime = 0;  // 0
@@ -114,33 +110,59 @@ void LCD_FSMCConfig(void)
   FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM1, ENABLE);
 }
 
+void LCD_FSMCConfig2(void) {
+  FSMC_NORSRAMInitTypeDef        FSMC_NORSRAMInitStructure;
+  FSMC_NORSRAMTimingInitTypeDef  FSMC_NORSRAMTimingInitStructure;
+
+  //-----------------------------------------
+  // Clock Enable von FSMC
+  //-----------------------------------------
+  RCC_AHB3PeriphClockCmd(RCC_AHB3Periph_FSMC, ENABLE);
+
+  //-----------------------------------------
+  // Structure fuer das Timing
+  //-----------------------------------------
+  FSMC_NORSRAMTimingInitStructure.FSMC_AddressSetupTime = 5; //15;
+  FSMC_NORSRAMTimingInitStructure.FSMC_AddressHoldTime = 1; //1;
+  FSMC_NORSRAMTimingInitStructure.FSMC_DataSetupTime = 5; //15;
+  FSMC_NORSRAMTimingInitStructure.FSMC_BusTurnAroundDuration = 0; //0;
+  FSMC_NORSRAMTimingInitStructure.FSMC_CLKDivision = 0; // 0
+  FSMC_NORSRAMTimingInitStructure.FSMC_DataLatency = 0; // 0
+  FSMC_NORSRAMTimingInitStructure.FSMC_AccessMode = FSMC_AccessMode_A;
+
+  //-----------------------------------------
+  // Structure fuer Bank-1 / PSRAM-1
+  //-----------------------------------------
+  FSMC_NORSRAMInitStructure.FSMC_Bank = FSMC_Bank1_NORSRAM1;
+  FSMC_NORSRAMInitStructure.FSMC_DataAddressMux = FSMC_DataAddressMux_Disable;
+  FSMC_NORSRAMInitStructure.FSMC_MemoryType = FSMC_MemoryType_SRAM;
+  FSMC_NORSRAMInitStructure.FSMC_MemoryDataWidth = FSMC_MemoryDataWidth_16b;
+  FSMC_NORSRAMInitStructure.FSMC_BurstAccessMode = FSMC_BurstAccessMode_Disable;
+  FSMC_NORSRAMInitStructure.FSMC_AsynchronousWait = FSMC_AsynchronousWait_Disable;
+  FSMC_NORSRAMInitStructure.FSMC_WaitSignalPolarity = FSMC_WaitSignalPolarity_Low;
+  FSMC_NORSRAMInitStructure.FSMC_WrapMode = FSMC_WrapMode_Disable;
+  FSMC_NORSRAMInitStructure.FSMC_WaitSignalActive = FSMC_WaitSignalActive_BeforeWaitState;
+  FSMC_NORSRAMInitStructure.FSMC_WriteOperation = FSMC_WriteOperation_Enable;
+  FSMC_NORSRAMInitStructure.FSMC_WaitSignal = FSMC_WaitSignal_Disable;
+  FSMC_NORSRAMInitStructure.FSMC_ExtendedMode = FSMC_ExtendedMode_Disable;
+  FSMC_NORSRAMInitStructure.FSMC_WriteBurst = FSMC_WriteBurst_Disable;
+  FSMC_NORSRAMInitStructure.FSMC_ReadWriteTimingStruct = &FSMC_NORSRAMTimingInitStructure;
+  FSMC_NORSRAMInitStructure.FSMC_WriteTimingStruct = &FSMC_NORSRAMTimingInitStructure;
+
+  // Config vom FSMC
+  FSMC_NORSRAMInit(&FSMC_NORSRAMInitStructure);
+
+  // Enable Bank-1 / PSRAM-1
+  FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM1, ENABLE);
+}
+
+
 /* Functions -----------------------------------------------------------------*/
-static void SSD1289_Configuration(void)
-{
-  LCD_FSMCConfig();
+static void SSD1289_Configuration(void) {
   LCD_CtrlLinesConfig();
+  LCD_FSMCConfig2();
 }
 
-void SSD1289_WriteIndex(uint16_t index)
-{
-	Clr_Rs;
-	Set_nRd;
-	
-	GPIOE->ODR = index;	 /* GPIO_Write(GPIOE,index); */
-	
-	Clr_nWr;
-	Set_nWr;
-}
-
-void SSD1289_WriteData(uint16_t data)
-{
-	Set_Rs;
-	
-	GPIOE->ODR = data;	 /* GPIO_Write(GPIOE,data); */
-	
-	Clr_nWr;
-	Set_nWr;
-}
 
 uint16_t SSD1289_ReadData(void)
 {
@@ -173,26 +195,19 @@ uint16_t SSD1289_ReadData(void)
 #define LCD_REG      (*((volatile unsigned short *) 0x60000000))
 #define LCD_RAM      (*((volatile unsigned short *) 0x60020000))
 #define LCD_REG_34    0x22
-void LCD_WriteRAM_Prepare(void)
-{
+void LCD_WriteRAM_Prepare(void) {
   LCD_REG = LCD_REG_34;
-}
-
-void LCD_WriteRAM(uint16_t RGB_Code)
-{
-  LCD_RAM = RGB_Code;
+  //delayMs(5);
 }
 ///
 
 
-void SSD1289_WriteReg(uint16_t SSD1289_Reg, uint16_t SSD1289_RegValue)
-{ 
+void SSD1289_WriteReg(uint16_t SSD1289_Reg, uint16_t SSD1289_RegValue) {
   LCD_REG = SSD1289_Reg;
   LCD_RAM = SSD1289_RegValue;
 }
 
-uint16_t SSD1289_ReadReg(uint16_t SSD1289_Reg)
-{
+uint16_t SSD1289_ReadReg(uint16_t SSD1289_Reg) {
 	uint16_t SSD1289_RAM;
 	
 	/* Write 16-bit Index (then Read Reg) */
@@ -204,8 +219,7 @@ uint16_t SSD1289_ReadReg(uint16_t SSD1289_Reg)
 	return SSD1289_RAM;
 }
 
-static void SSD1289_SetCursor( uint16_t Xpos, uint16_t Ypos )
-{
+static void SSD1289_SetCursor( uint16_t Xpos, uint16_t Ypos ) {
     #if  ( DISP_ORIENTATION == 90 ) || ( DISP_ORIENTATION == 270 )
 	
  	uint16_t temp = Xpos;
@@ -217,63 +231,13 @@ static void SSD1289_SetCursor( uint16_t Xpos, uint16_t Ypos )
 		
 	#endif
 
-  	SSD1289_WriteReg(0x004e, Xpos);
-    SSD1289_WriteReg(0x004f, Ypos);
+  SSD1289_WriteReg(0x004e, Xpos);
+  SSD1289_WriteReg(0x004f, Ypos);
 }
 
 void SSD1289_Init(void)
 {
 	SSD1289_Configuration();
-
-	/*
-	SSD1289_WriteReg(OSCILLATION_START,                   0x0001);  // Enable SSD1289 Oscillator
-	SSD1289_WriteReg(POWER_CONTROL_1,                     0xA8A4);
-	SSD1289_WriteReg(POWER_CONTROL_2,                     0x0000);
-	SSD1289_WriteReg(POWER_CONTROL_3,                     0x080C);
-	SSD1289_WriteReg(POWER_CONTROL_4,                     0x2B00);
-	SSD1289_WriteReg(POWER_CONTROL_5,                     0x00B0);
-	SSD1289_WriteReg(DRIVER_OUTPUT,                       0x2B3F);  // 320*240 0x2B3F
-	SSD1289_WriteReg(LCD_DRIVE_AC,                        0x0600);
-	SSD1289_WriteReg(SLEEP_MODE,                          0x0000);
-	SSD1289_WriteReg(ENTRY_MODE,                          0x6070);
-	SSD1289_WriteReg(COMPARE_1,                           0x0000);
-	SSD1289_WriteReg(COMPARE_2,                           0x0000);
-	SSD1289_WriteReg(HORIZONTAL_PORCH,                    0xEF1C);
-	SSD1289_WriteReg(VERTICAL_PORCH,                      0x0003);
-	SSD1289_WriteReg(DISPLAY_CONTROL,                     0x0133);
-	SSD1289_WriteReg(FRAME_CYCLE_CONTROL,                 0x0000);
- 	SSD1289_WriteReg(GATE_SCAN_START_POSITION,            0x0000);
-	SSD1289_WriteReg(VERTICAL_SCROLL_CONTROL_1,           0x0000);
-	SSD1289_WriteReg(VERTICAL_SCROLL_CONTROL_2,           0x0000);
-	SSD1289_WriteReg(FIRST_WINDOW_START,                  0x0000);
-	SSD1289_WriteReg(FIRST_WINDOW_END,                    0x013F);
-	SSD1289_WriteReg(SECOND_WINDOW_START,                 0x0000);
-	SSD1289_WriteReg(SECOND_WINDOW_END,                   0x0000);
-	SSD1289_WriteReg(HORIZONTAL_RAM_ADDRESS_POSITION,     0xEF00);
-	SSD1289_WriteReg(VERTICAL_RAM_ADDRESS_START_POSITION, 0x0000);
-	SSD1289_WriteReg(VERTICAL_RAM_ADDRESS_END_POSITION,   0x013F);
-	SSD1289_WriteReg(GAMMA_CONTROL_1,                     0x0707);
-	SSD1289_WriteReg(GAMMA_CONTROL_2,                     0x0204);
-	SSD1289_WriteReg(GAMMA_CONTROL_3,                     0x0204);
-	SSD1289_WriteReg(GAMMA_CONTROL_4,                     0x0502);
-	SSD1289_WriteReg(GAMMA_CONTROL_5,                     0x0507);
-	SSD1289_WriteReg(GAMMA_CONTROL_6,                     0x0204);
-	SSD1289_WriteReg(GAMMA_CONTROL_7,                     0x0204);
-	SSD1289_WriteReg(GAMMA_CONTROL_8,                     0x0502);
-	SSD1289_WriteReg(GAMMA_CONTROL_9,                     0x0302);
-	SSD1289_WriteReg(GAMMA_CONTROL_10,                    0x0302);
-	SSD1289_WriteReg(RAM_WRITE_DATA_MASK_1,               0x0000);
- 	SSD1289_WriteReg(RAM_WRITE_DATA_MASK_2,               0x0000);
-	SSD1289_WriteReg(FRAME_FREQUENCY,                     0x8000);
-	SSD1289_WriteReg(SET_GDDRAM_X_ADDRESS_COUNTER,        0x0000);
-	SSD1289_WriteReg(SET_GDDRAM_Y_ADDRESS_COUNTER,        0x0000);
-
-
-	// Does not have any effect!?
-	SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_1,             0x0006); // or 0xA???
-  SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_2,             0x12BE);
-  SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_3,             0x6CEB);
-  */
 
 	RegSSD1289_OSCILLATION_START_t                   oscillation_start;
   RegSSD1289_DRIVER_OUTPUT_t                       driver_output;
@@ -325,7 +289,7 @@ void SSD1289_Init(void)
   RegSSD1289_SET_GDDRAM_Y_ADDRESS_COUNTER_t        set_gddram_y_address_counter;
 
 	oscillation_start.OSCEN = 1;
-  power_control_1.AP = 2;
+  power_control_1.AP = 7; //2;
   power_control_1.DC = 10;
   power_control_1.BT = 4;
   power_control_1.DCT = 10;
@@ -336,12 +300,12 @@ void SSD1289_Init(void)
   power_control_5.VCM = 48;
   power_control_5.nOTP = 1;
   driver_output.MUX = 319;
-  driver_output.TB = 1;
+  driver_output.TB = 1; // 1
   driver_output.SM = 0;
   driver_output.BGR = 1;
   driver_output.CAD = 0;
   driver_output.REV = 1;
-  driver_output.RL = 0;
+  driver_output.RL = 0; // ;0;
   lcd_drive_ac.NW = 0;
   lcd_drive_ac.WSMD = 0;
   lcd_drive_ac.EOR = 1;
@@ -350,7 +314,7 @@ void SSD1289_Init(void)
   lcd_drive_ac.FLD = 0;
   sleep_mode.SLP = 0;
   entry_mode.LG = 0;
-  entry_mode.AM = 0;
+  entry_mode.AM = 0; // 0
   entry_mode.ID = 3;
   entry_mode.TY = 1;
   entry_mode.DMode = 0;
@@ -471,165 +435,135 @@ void SSD1289_Init(void)
   SSD1289_Clear(Black);
 }
 
-/*
-void LCD_Init(void) {
-  SSD1289_Configuration();
-
-  SSD1289_WriteReg(OSCILLATION_START,                   0x0001);
-  SSD1289_WriteReg(POWER_CONTROL_1,                     0xA8A4);
-  SSD1289_WriteReg(POWER_CONTROL_2,                     0x0000);
-  SSD1289_WriteReg(POWER_CONTROL_3,                     0x080C);
-  SSD1289_WriteReg(POWER_CONTROL_4,                     0x2B00);
-  SSD1289_WriteReg(POWER_CONTROL_5,                     0x00B0);
-  SSD1289_WriteReg(DRIVER_OUTPUT,                       0x2B3F);  //RGB
-  SSD1289_WriteReg(LCD_DRIVE_AC,                        0x0600);
-  SSD1289_WriteReg(SLEEP_MODE,                          0x0000);
-  SSD1289_WriteReg(ENTRY_MODE,                          0x6830); // diff
-  SSD1289_WriteReg(COMPARE_1,                           0x0000);
-  SSD1289_WriteReg(COMPARE_2,                           0x0000);
-  SSD1289_WriteReg(HORIZONTAL_PORCH,                    0xEF1C);
-  SSD1289_WriteReg(VERTICAL_PORCH,                      0x0103); // diff
-  SSD1289_WriteReg(DISPLAY_CONTROL,                     0x0021); // diff
-  SSD1289_WriteReg(DISPLAY_CONTROL,                     0x0023); // diff
-  SSD1289_WriteReg(DISPLAY_CONTROL,                     0x0033); // diff
-  SSD1289_WriteReg(FRAME_CYCLE_CONTROL,                 0x0000);
-  SSD1289_WriteReg(GATE_SCAN_START_POSITION,            0x0000);
-  SSD1289_WriteReg(VERTICAL_SCROLL_CONTROL_1,           0x0000);
-  SSD1289_WriteReg(VERTICAL_SCROLL_CONTROL_2,           0x0000);
-  SSD1289_WriteReg(FIRST_WINDOW_START,                  0x0000);
-  SSD1289_WriteReg(FIRST_WINDOW_END,                    0x013F);
-  SSD1289_WriteReg(SECOND_WINDOW_START,                 0x0000);
-  SSD1289_WriteReg(SECOND_WINDOW_END,                   0x0000);
-  SSD1289_WriteReg(HORIZONTAL_RAM_ADDRESS_POSITION,     0xEF00);
-  SSD1289_WriteReg(VERTICAL_RAM_ADDRESS_START_POSITION, 0x0000);
-  SSD1289_WriteReg(VERTICAL_RAM_ADDRESS_END_POSITION,   0x013F);
-  SSD1289_WriteReg(GAMMA_CONTROL_1,                     0x0707);
-  SSD1289_WriteReg(GAMMA_CONTROL_2,                     0x0204);
-  SSD1289_WriteReg(GAMMA_CONTROL_3,                     0x0204);
-  SSD1289_WriteReg(GAMMA_CONTROL_4,                     0x0502);
-  SSD1289_WriteReg(GAMMA_CONTROL_5,                     0x0507);
-  SSD1289_WriteReg(GAMMA_CONTROL_6,                     0x0204);
-  SSD1289_WriteReg(GAMMA_CONTROL_7,                     0x0204);
-  SSD1289_WriteReg(GAMMA_CONTROL_8,                     0x0502);
-  SSD1289_WriteReg(GAMMA_CONTROL_9,                     0x0302);
-  SSD1289_WriteReg(GAMMA_CONTROL_10,                    0x0302);
-  SSD1289_WriteReg(RAM_WRITE_DATA_MASK_1,               0x0000);
-  SSD1289_WriteReg(RAM_WRITE_DATA_MASK_2,               0x0000);
-  SSD1289_WriteReg(FRAME_FREQUENCY,                     0x8000);
-  SSD1289_WriteReg(SET_GDDRAM_X_ADDRESS_COUNTER,        0x0000);
-  SSD1289_WriteReg(SET_GDDRAM_Y_ADDRESS_COUNTER,        0x0000);
-
-  SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_1,             0x0006);
-  SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_2,             0x12BE);
-  SSD1289_WriteReg(OPTIMIZE_ACCESS_SPEED_3,             0x6CEB);
-}
-*/
-
-void SSD1289_Clear(uint16_t Color)
+void P_LCD1289_InitChip(uint16_t mode)
 {
-  /*
-	uint32_t index = 0;
-	SSD1289_SetCursor(0,0); 
+  SSD1289_WriteReg(0x0007,0x0021);
+  SSD1289_WriteReg(0x0000,0x0001);
+  SSD1289_WriteReg(0x0007,0x0023);
+  SSD1289_WriteReg(0x0010,0x0000);
+  SSD1289_WriteReg(0x0007,0x0033);
+  SSD1289_WriteReg(0x0011, mode);   // Portrait, Landscape
+  SSD1289_WriteReg(0x0002,0x0600);
+  SSD1289_WriteReg(0x0012,0x6CEB);
+  SSD1289_WriteReg(0x0003,0xA8A4);
+  SSD1289_WriteReg(0x000C,0x0000);
+  SSD1289_WriteReg(0x000D,0x080C);
+  SSD1289_WriteReg(0x000E,0x2B00);
+  SSD1289_WriteReg(0x001E,0x00B0);
+  SSD1289_WriteReg(0x0001,0x2b3F);
+  SSD1289_WriteReg(0x0005,0x0000);
+  SSD1289_WriteReg(0x0006,0x0000);
+  SSD1289_WriteReg(0x0016,0xEF1C);
+  SSD1289_WriteReg(0x0017,0x0103);
+  SSD1289_WriteReg(0x000B,0x0000);
+  SSD1289_WriteReg(0x000F,0x0000);
+  SSD1289_WriteReg(0x0041,0x0000);
+  SSD1289_WriteReg(0x0042,0x0000);
+  SSD1289_WriteReg(0x0048,0x0000);
+  SSD1289_WriteReg(0x0049,0x013F);
+  SSD1289_WriteReg(0x004A,0x0000);
+  SSD1289_WriteReg(0x004B,0x0000);
+  SSD1289_WriteReg(0x0044,0xEF00);  // Horizontal Start und Ende
+  SSD1289_WriteReg(0x0045,0x0000);  // Vertikal Start
+  SSD1289_WriteReg(0x0046,0x013F);  // Vertikal Ende
+  SSD1289_WriteReg(0x0030,0x0707);
+  SSD1289_WriteReg(0x0031,0x0204);
+  SSD1289_WriteReg(0x0032,0x0204);
+  SSD1289_WriteReg(0x0033,0x0502);
+  SSD1289_WriteReg(0x0034,0x0507);
+  SSD1289_WriteReg(0x0035,0x0204);
+  SSD1289_WriteReg(0x0036,0x0204);
+  SSD1289_WriteReg(0x0037,0x0502);
+  SSD1289_WriteReg(0x003A,0x0302);
+  SSD1289_WriteReg(0x002F,0x12BE);
+  SSD1289_WriteReg(0x003B,0x0302);
+  SSD1289_WriteReg(0x0023,0x0000);
+  SSD1289_WriteReg(0x0024,0x0000);
+  SSD1289_WriteReg(0x0025,0x8000);
+  SSD1289_WriteReg(0x004f,0x0000);
+  SSD1289_WriteReg(0x004e,0x0000);
 
-	SSD1289_WriteIndex(0x0022);
-	for( index = 0; index < MAX_X * MAX_Y; index++ )
-		SSD1289_WriteData(Color);
-	*/
+  // kleine pause
+  delayMs(100);
+}
+
+void SSD1289_Clear(uint16_t Color) {
 	uint32_t index = 0;
 	SSD1289_SetCursor(0,0);
   LCD_WriteRAM_Prepare();
+
   for(index = 0; index < MAX_X * MAX_Y; index++)
     LCD_RAM = Color;
 }
 
-uint16_t SSD1289_GetPoint(uint16_t Xpos,uint16_t Ypos)
-{
+uint16_t SSD1289_GetPoint(uint16_t Xpos,uint16_t Ypos) {
 	uint16_t dummy;
 	
 	SSD1289_SetCursor(Xpos,Ypos);
 	Clr_Cs;
 	SSD1289_WriteIndex(0x0022);  
 	dummy = SSD1289_ReadData();
-    dummy = SSD1289_ReadData(); 
-    Set_Cs;	
+  dummy = SSD1289_ReadData();
+  Set_Cs;
  	return  dummy;
 }
 
-void SSD1289_SetPoint(uint16_t Xpos,uint16_t Ypos,uint16_t point) {
+void SSD1289_SetPoint(uint16_t Xpos, uint16_t Ypos, uint16_t point) {
 	if( Xpos >= MAX_X || Ypos >= MAX_Y )
 		return;
 
-	SSD1289_SetCursor(Xpos,Ypos);
-	SSD1289_WriteReg(0x0022,point);
+	SSD1289_SetCursor(Xpos, Ypos);
+	SSD1289_WriteReg(RAM_DATA_READ_WRITE, point);
+
+	//delayMs(1000);
 }
 
-// Buggy!!!
-void SSD1289_DrawLine( uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1 , uint16_t color )
-{
-  short dx, dy;
-  short temp;
+void SSD1289_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2 , uint16_t color) {
+    int delta_x = x2 - x1;
+    // if x1 == x2, then it does not matter what we set here
+    signed char const ix = (delta_x > 0) - (delta_x < 0);
+    delta_x = abs(delta_x) << 1;
 
-  if(x0 > x1) {
-    temp = x1;
-    x1 = x0;
-    x0 = temp;   
-  }
-  if( y0 > y1 ) {
-    temp = y1;
-    y1 = y0;
-    y0 = temp;   
-  }
+    int delta_y = y2 - y1;
+    // if y1 == y2, then it does not matter what we set here
+    signed char const iy = (delta_y > 0) - (delta_y < 0);
+    delta_y = abs(delta_y) << 1;
 
-  dx = x1 - x0;
-  dy = y1 - y0;
+    SSD1289_SetPoint(x1, y1, color);
 
-  if( dx == 0 ) {
-    do {
-      SSD1289_SetPoint(x0, y0, color);
-      y0++;
-    }
-    while( y1 >= y0 ); 
-    return; 
-  }
-  if( dy == 0 ) {
-    do {
-      SSD1289_SetPoint(x0, y0, color);
-      x0++;
-    }
-    while( x1 >= x0 ); 
-		return;
-  }
+    if (delta_x >= delta_y) {
+      // error may go below zero
+      int error = delta_y - (delta_x >> 1);
 
-	// Based on Bresenham's line algorithm
-  if( dx > dy ) {
-    temp = 2 * dy - dx;
-    while( x0 != x1 ) {
-	    SSD1289_SetPoint(x0, y0,color);
-	    x0++;
-	    if( temp > 0 ) {
-	      y0++;
-	      temp += 2 * dy - 2 * dx; 
-	 	  }
-      else {
-			  temp += 2 * dy;
-			}       
-    }
-    SSD1289_SetPoint(x0,y0,color);
-  }  
-  else {
-    temp = 2 * dx - dy;
-    while( y0 != y1 ) {
-      SSD1289_SetPoint(x0,y0,color);
-        y0++;
-        if( temp > 0 ) {
-          x0++;
-          temp+=2*dy-2*dx;
+      while (x1 != x2){
+        if ((error >= 0) && (error || (ix > 0))) {
+            error -= delta_x;
+            y1 += iy;
         }
-        else {
-          temp += 2 * dy;
+        // else do nothing
+
+        error += delta_y;
+        x1 += ix;
+
+        SSD1289_SetPoint(x1, y1, color);
       }
-    } 
-    SSD1289_SetPoint(x0,y0,color);
+    }
+    else {
+      // error may go below zero
+      int error = delta_x - (delta_y >> 1);
+
+      while (y1 != y2) {
+        if ((error >= 0) && (error || (iy > 0))) {
+            error -= delta_y;
+            x1 += ix;
+        }
+        // else do nothing
+
+        error += delta_x;
+        y1 += iy;
+
+        SSD1289_SetPoint(x1, y1, color);
+      }
   }
 } 
 
@@ -826,18 +760,17 @@ void SSD1289_DrawPicture8bit(uint16_t x, uint16_t y, uint16_t w, uint16_t h, con
 	} 
 }
 
-void SSD1289_DrawCircle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color)
-{
+void SSD1289_DrawCircle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color) {
 	int16_t f = 1 - r;
     int16_t ddF_x = 1;
     int16_t ddF_y = -2 * r;
     int16_t x = 0;
     int16_t y = r;
   
-    SSD1289_SetPoint(x0, y0+r, color);
-    SSD1289_SetPoint(x0, y0-r, color);
-    SSD1289_SetPoint(x0+r, y0, color);
-    SSD1289_SetPoint(x0-r, y0, color);
+    SSD1289_SetPoint(x0, y0 + r, color);
+    SSD1289_SetPoint(x0, y0 - r, color);
+    SSD1289_SetPoint(x0 + r, y0, color);
+    SSD1289_SetPoint(x0 - r, y0, color);
 
     while (x < y) {
         if (f >= 0) {
@@ -861,8 +794,7 @@ void SSD1289_DrawCircle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color)
     }
 }
 
-void SSD1289_FillCircle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color)
-{
+void SSD1289_FillCircle(uint16_t x0, uint16_t y0, uint16_t r, uint16_t color) {
 	int16_t f = 1 - r;
     int16_t ddF_x = 1;
     int16_t ddF_y = -2 * r;
@@ -908,7 +840,7 @@ void SSD1289_DrawRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t c
 	if ((y+h) > MAX_Y)
 		h = MAX_Y - y;
 
-	SSD1289_DrawLine(x, y, x, y+h, color);
+	SSD1289_DrawLine(x, y, x, y + h, color);
 	SSD1289_DrawLine(x, y, x+w, y, color);
 	SSD1289_DrawLine(x+w, y+h, x, y+h, color);
 	SSD1289_DrawLine(x+w, y+h, x+w, y, color);

@@ -1240,7 +1240,6 @@ int main(void) {
 
   UB_Rng_Init(); // Init the random number generator
   init_stars();
-  SSD1289_Clear(Green);
 
   char c = 0;
   //printf("now listening on serial port...\n\r");
